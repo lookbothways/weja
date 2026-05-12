@@ -8,7 +8,7 @@
     <style>
         :root { 
             --bg: #ffffff; --text: #333; --border: #eeeeee; 
-            --ghost: rgba(0, 0, 0, 0.2); 
+            --ghost-bg: rgba(0, 0, 0, 0.15);
             --player-dot: #add8e6; 
             --status-red: #ff5f57; --status-green: #28c840; 
         }
@@ -26,42 +26,44 @@
         #container { width: 100%; max-width: 600px; display: flex; flex-direction: column; align-items: center; }
 
         #history {
-            width: 100%; height: 100px; display: flex; flex-direction: column;
+            width: 100%; height: 80px; display: flex; flex-direction: column;
             justify-content: flex-end; margin-bottom: 5px;
             mask-image: linear-gradient(to top, black 70%, transparent 100%);
         }
-        .msg { color: #bbb; font-size: 1.2rem; font-weight: 300; text-align: center; margin: 2px 0; animation: slideUp 0.3s ease-out; }
+        .msg { color: #bbb; font-size: 1.1rem; font-weight: 300; text-align: center; margin: 2px 0; animation: slideUp 0.3s ease-out; }
         @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
         #display { 
             width: 100%; min-height: 60px; padding: 10px; font-size: 1.8rem; font-weight: 300; 
             border: 1px solid #ddd; border-radius: 15px; text-align: center; letter-spacing: 1px; 
-            display: flex; align-items: center; justify-content: center; background: white; margin-bottom: 30px;
+            display: flex; align-items: center; justify-content: center; background: white; margin-bottom: 20px;
             z-index: 10;
         }
 
+        #keyboard-wrapper { position: relative; width: 100%; max-width: 800px; }
         #keyboard { 
             display: grid; grid-template-columns: repeat(20, 1fr); gap: 6px; 
-            width: 100%; max-width: 800px; user-select: none; z-index: 10;
+            width: 100%; user-select: none; z-index: 10; position: relative;
         }
-        .key { grid-column: span 2; height: 50px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.9); border: 1px solid var(--border); border-radius: 6px; font-size: 1rem; cursor: pointer; }
+        .key { grid-column: span 2; height: 45px; display: flex; align-items: center; justify-content: center; background: #fff; border: 1px solid var(--border); border-radius: 6px; font-size: 0.9rem; cursor: pointer; }
         .key.wide { grid-column: span 12; }
-        .key.gray { grid-column: span 3; background: #fafafa; color: #aaa; font-size: 0.75rem; letter-spacing: 1px; }
+        .key.gray { grid-column: span 3; background: #fafafa; color: #aaa; font-size: 0.7rem; }
         .spacer { grid-column: span 1; }
 
-        #tally { margin-top: 40px; font-weight: 100; font-size: 1.2rem; color: #eee; letter-spacing: 2px; }
+        #tally { margin-top: 30px; font-weight: 100; font-size: 1.1rem; color: #eee; letter-spacing: 2px; }
 
         #ghost-cursor { 
-            position: fixed; left: 50%; top: 50%; width: 32px; height: 32px; 
-            background: var(--ghost); border: 1.5px solid #222; border-radius: 50%; 
-            pointer-events: none; transform: translate(-50%, -50%); z-index: 9999; 
+            position: fixed; left: 50%; top: 50%; width: 40px; height: 40px; 
+            background: var(--ghost-bg); border: 1.5px solid #222; border-radius: 50%; 
+            pointer-events: auto; transform: translate(-50%, -50%); z-index: 9999; 
+            cursor: pointer;
         }
 
         .player-dot {
-            position: fixed; width: 6px; height: 6px; 
+            position: fixed; width: 8px; height: 8px; 
             background: var(--player-dot); border-radius: 50%; 
             pointer-events: none; transform: translate(-50%, -50%);
-            z-index: 5000; transition: transform 0.1s linear;
+            z-index: 5000;
         }
     </style>
 </head>
@@ -77,12 +79,14 @@
         <div id="display"></div>
     </div>
 
-    <div id="keyboard">
-        <div class="key">1</div><div class="key">2</div><div class="key">3</div><div class="key">4</div><div class="key">5</div><div class="key">6</div><div class="key">7</div><div class="key">8</div><div class="key">9</div><div class="key">0</div>
-        <div class="key">Q</div><div class="key">W</div><div class="key">E</div><div class="key">R</div><div class="key">T</div><div class="key">Y</div><div class="key">U</div><div class="key">I</div><div class="key">O</div><div class="key">P</div>
-        <div class="spacer"></div><div class="key">A</div><div class="key">S</div><div class="key">D</div><div class="key">F</div><div class="key">G</div><div class="key">H</div><div class="key">J</div><div class="key">K</div><div class="key">L</div><div class="spacer"></div>
-        <div class="key gray">DEL</div><div class="key">Z</div><div class="key">X</div><div class="key">C</div><div class="key">V</div><div class="key">B</div><div class="key">N</div><div class="key">M</div><div class="key gray">SEND</div>
-        <div class="spacer"></div><div class="spacer"></div><div class="spacer"></div><div class="key wide">SPACE</div>
+    <div id="keyboard-wrapper">
+        <div id="keyboard">
+            <div class="key">1</div><div class="key">2</div><div class="key">3</div><div class="key">4</div><div class="key">5</div><div class="key">6</div><div class="key">7</div><div class="key">8</div><div class="key">9</div><div class="key">0</div>
+            <div class="key">Q</div><div class="key">W</div><div class="key">E</div><div class="key">R</div><div class="key">T</div><div class="key">Y</div><div class="key">U</div><div class="key">I</div><div class="key">O</div><div class="key">P</div>
+            <div class="spacer"></div><div class="key">A</div><div class="key">S</div><div class="key">D</div><div class="key">F</div><div class="key">G</div><div class="key">H</div><div class="key">J</div><div class="key">K</div><div class="key">L</div><div class="spacer"></div>
+            <div class="key gray">DEL</div><div class="key">Z</div><div class="key">X</div><div class="key">C</div><div class="key">V</div><div class="key">B</div><div class="key">N</div><div class="key">M</div><div class="key gray">SEND</div>
+            <div class="spacer"></div><div class="spacer"></div><div class="spacer"></div><div class="key wide">SPACE</div>
+        </div>
     </div>
 
     <div id="tally">0</div>
@@ -112,6 +116,7 @@
         const playersRef = db.ref('players');
         const historyRef = db.ref('history');
 
+        const kb = document.getElementById('keyboard');
         const display = document.getElementById('display');
         const historyEl = document.getElementById('history');
         const tallyEl = document.getElementById('tally');
@@ -128,13 +133,20 @@
         });
         playerRef.onDisconnect().remove();
 
-        function sendPos(x, y) {
-            playerRef.set({ x: x / window.innerWidth, y: y / window.innerHeight, lastSeen: Date.now(), joinedAt: joinedAt });
+        function sendPos(clientX, clientY) {
+            const rect = kb.getBoundingClientRect();
+            // Store coordinates as a ratio relative to the keyboard box
+            const x = (clientX - rect.left) / rect.width;
+            const y = (clientY - rect.top) / rect.height;
+            playerRef.set({ x, y, lastSeen: Date.now(), joinedAt: joinedAt });
             dotLocal.style.background = 'var(--status-green)';
         }
 
         window.addEventListener('mousemove', (e) => sendPos(e.clientX, e.clientY));
         window.addEventListener('touchmove', (e) => {
+            if (e.touches[0]) sendPos(e.touches[0].clientX, e.touches[0].clientY);
+        }, { passive: true });
+        window.addEventListener('touchstart', (e) => {
             if (e.touches[0]) sendPos(e.touches[0].clientX, e.touches[0].clientY);
         }, { passive: true });
 
@@ -153,6 +165,7 @@
 
         function animate() {
             const now = Date.now();
+            const kbRect = kb.getBoundingClientRect();
             const activePlayers = Object.keys(allPlayers)
                 .map(id => ({ id, ...allPlayers[id] }))
                 .filter(p => now - p.lastSeen < 6000)
@@ -167,8 +180,11 @@
                     document.body.appendChild(dot);
                     playerDots[p.id] = dot;
                 }
-                playerDots[p.id].style.left = (p.x * window.innerWidth) + 'px';
-                playerDots[p.id].style.top = (p.y * window.innerHeight) + 'px';
+                // Reproject ratio back to current keyboard screen position
+                const posX = kbRect.left + (p.x * kbRect.width);
+                const posY = kbRect.top + (p.y * kbRect.height);
+                playerDots[p.id].style.left = posX + 'px';
+                playerDots[p.id].style.top = posY + 'px';
             });
 
             Object.keys(playerDots).forEach(id => {
@@ -178,36 +194,27 @@
                 }
             });
 
-            const count = activePlayers.length;
-            if (count > 0) {
+            if (activePlayers.length > 0) {
                 const orbitTime = 6660; 
-                const t = (now % orbitTime) / orbitTime; // 0.0 to 1.0 linear
-                
-                // MATH: The "Dwell" function.
-                // We use a sine wave to slow down the focus near integers.
-                // focus = raw - k*sin(raw) makes the derivative small at integers.
-                const rawFocus = t * count;
+                const t = (now % orbitTime) / orbitTime;
+                const rawFocus = t * activePlayers.length;
                 const focus = rawFocus - (1.0 / (2 * Math.PI)) * Math.sin(2 * Math.PI * rawFocus);
 
                 let sumX = 0, sumY = 0, sumWeight = 0;
-
                 activePlayers.forEach((p, i) => {
                     let dist = Math.abs(i - focus);
-                    if (dist > count / 2) dist = Math.abs(dist - count);
-                    
-                    // Gaussian Weight: Tightened sigma to 0.28 for more "hover" snap
+                    if (dist > activePlayers.length / 2) dist = Math.abs(dist - activePlayers.length);
                     const weight = Math.exp(-(dist * dist) / (2 * 0.28 * 0.28));
                     sumX += p.x * weight;
                     sumY += p.y * weight;
                     sumWeight += weight;
                 });
 
-                const targetX = (sumX / sumWeight) * window.innerWidth;
-                const targetY = (sumY / sumWeight) * window.innerHeight;
+                const targetX = kbRect.left + ((sumX / sumWeight) * kbRect.width);
+                const targetY = kbRect.top + ((sumY / sumWeight) * kbRect.height);
                 const currentX = parseFloat(ghost.style.left) || targetX;
                 const currentY = parseFloat(ghost.style.top) || targetY;
                 
-                // Interpolation (0.1) for a slightly heavy, physical feel
                 ghost.style.left = (currentX + (targetX - currentX) * 0.1) + 'px';
                 ghost.style.top = (currentY + (targetY - currentY) * 0.1) + 'px';
             }
@@ -215,12 +222,12 @@
         }
         requestAnimationFrame(animate);
 
-        function tryType(e) {
+        function triggerType(e) {
+            if(e) e.stopPropagation();
             const rect = ghost.getBoundingClientRect();
-            const el = document.elementFromPoint(rect.left + 16, rect.top + 16);
+            const el = document.elementFromPoint(rect.left + rect.width/2, rect.top + rect.height/2);
             
             if (el && el.classList.contains('key')) {
-                if(e) e.preventDefault();
                 let char = el.innerText;
                 if (char === 'SEND') {
                     if (sharedText.trim().length > 0) {
@@ -238,13 +245,12 @@
             }
         }
 
-        window.addEventListener('mousedown', tryType);
-        window.addEventListener('touchstart', (e) => {
-            if (e.touches[0]) {
-                sendPos(e.touches[0].clientX, e.touches[0].clientY);
-                tryType(e);
-            }
-        }, { passive: false });
+        ghost.addEventListener('mousedown', triggerType);
+        ghost.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            triggerType(e);
+        });
+
     </script>
 </body>
 </html>
