@@ -40,9 +40,17 @@
             z-index: 10;
         }
 
+        #play-area {
+            width: 100%; max-width: 800px;
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 14px;
+            background: rgba(255,255,255,0.4);
+        }
+
         #keyboard { 
             display: grid; grid-template-columns: repeat(20, 1fr); gap: 6px; 
-            width: 100%; max-width: 800px; user-select: none; z-index: 10;
+            width: 100%; user-select: none; z-index: 10;
         }
         .key { grid-column: span 2; height: 50px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.9); border: 1px solid var(--border); border-radius: 6px; font-size: 1rem; cursor: pointer; }
         .key.wide { grid-column: span 12; }
@@ -77,12 +85,14 @@
         <div id="display"></div>
     </div>
 
-    <div id="keyboard">
-        <div class="key">1</div><div class="key">2</div><div class="key">3</div><div class="key">4</div><div class="key">5</div><div class="key">6</div><div class="key">7</div><div class="key">8</div><div class="key">9</div><div class="key">0</div>
-        <div class="key">Q</div><div class="key">W</div><div class="key">E</div><div class="key">R</div><div class="key">T</div><div class="key">Y</div><div class="key">U</div><div class="key">I</div><div class="key">O</div><div class="key">P</div>
-        <div class="spacer"></div><div class="key">A</div><div class="key">S</div><div class="key">D</div><div class="key">F</div><div class="key">G</div><div class="key">H</div><div class="key">J</div><div class="key">K</div><div class="key">L</div><div class="spacer"></div>
-        <div class="key gray">DEL</div><div class="key">Z</div><div class="key">X</div><div class="key">C</div><div class="key">V</div><div class="key">B</div><div class="key">N</div><div class="key">M</div><div class="key gray">SEND</div>
-        <div class="spacer"></div><div class="spacer"></div><div class="spacer"></div><div class="key wide">SPACE</div>
+    <div id="play-area">
+        <div id="keyboard">
+            <div class="key">1</div><div class="key">2</div><div class="key">3</div><div class="key">4</div><div class="key">5</div><div class="key">6</div><div class="key">7</div><div class="key">8</div><div class="key">9</div><div class="key">0</div>
+            <div class="key">Q</div><div class="key">W</div><div class="key">E</div><div class="key">R</div><div class="key">T</div><div class="key">Y</div><div class="key">U</div><div class="key">I</div><div class="key">O</div><div class="key">P</div>
+            <div class="spacer"></div><div class="key">A</div><div class="key">S</div><div class="key">D</div><div class="key">F</div><div class="key">G</div><div class="key">H</div><div class="key">J</div><div class="key">K</div><div class="key">L</div><div class="spacer"></div>
+            <div class="key gray">DEL</div><div class="key">Z</div><div class="key">X</div><div class="key">C</div><div class="key">V</div><div class="key">B</div><div class="key">N</div><div class="key">M</div><div class="key gray">SEND</div>
+            <div class="spacer"></div><div class="spacer"></div><div class="spacer"></div><div class="key wide">SPACE</div>
+        </div>
     </div>
 
     <div id="tally">0</div>
@@ -118,6 +128,7 @@
         const ghost = document.getElementById('ghost-cursor');
         const dotNet = document.getElementById('dot-net');
         const dotLocal = document.getElementById('dot-local');
+        const playArea = document.getElementById('play-area');
 
         let allPlayers = {};
         let playerDots = {};
@@ -128,8 +139,29 @@
         });
         playerRef.onDisconnect().remove();
 
-        function sendPos(x, y) {
-            playerRef.set({ x: x / window.innerWidth, y: y / window.innerHeight, lastSeen: Date.now(), joinedAt: joinedAt });
+        // --- Coordinate system: normalized against the play-area box ---
+        function getPlayRect() { return playArea.getBoundingClientRect(); }
+
+        // Convert client (viewport) coords -> normalized [0,1] within play area.
+        // Returns null if outside the box, so off-box motion isn't sent.
+        function toNorm(clientX, clientY) {
+            const r = getPlayRect();
+            const nx = (clientX - r.left) / r.width;
+            const ny = (clientY - r.top) / r.height;
+            if (nx < 0 || nx > 1 || ny < 0 || ny > 1) return null;
+            return { x: nx, y: ny };
+        }
+
+        // Convert normalized -> client (viewport) coords on this device.
+        function fromNorm(nx, ny) {
+            const r = getPlayRect();
+            return { x: r.left + nx * r.width, y: r.top + ny * r.height };
+        }
+
+        function sendPos(clientX, clientY) {
+            const n = toNorm(clientX, clientY);
+            if (!n) return;
+            playerRef.set({ x: n.x, y: n.y, lastSeen: Date.now(), joinedAt: joinedAt });
             dotLocal.style.background = 'var(--status-green)';
         }
 
@@ -167,8 +199,9 @@
                     document.body.appendChild(dot);
                     playerDots[p.id] = dot;
                 }
-                playerDots[p.id].style.left = (p.x * window.innerWidth) + 'px';
-                playerDots[p.id].style.top = (p.y * window.innerHeight) + 'px';
+                const c = fromNorm(p.x, p.y);
+                playerDots[p.id].style.left = c.x + 'px';
+                playerDots[p.id].style.top = c.y + 'px';
             });
 
             Object.keys(playerDots).forEach(id => {
@@ -202,14 +235,14 @@
                     sumWeight += weight;
                 });
 
-                const targetX = (sumX / sumWeight) * window.innerWidth;
-                const targetY = (sumY / sumWeight) * window.innerHeight;
-                const currentX = parseFloat(ghost.style.left) || targetX;
-                const currentY = parseFloat(ghost.style.top) || targetY;
+                // Weighted average is in normalized play-area space — convert to client coords.
+                const target = fromNorm(sumX / sumWeight, sumY / sumWeight);
+                const currentX = parseFloat(ghost.style.left) || target.x;
+                const currentY = parseFloat(ghost.style.top) || target.y;
                 
                 // Interpolation (0.1) for a slightly heavy, physical feel
-                ghost.style.left = (currentX + (targetX - currentX) * 0.1) + 'px';
-                ghost.style.top = (currentY + (targetY - currentY) * 0.1) + 'px';
+                ghost.style.left = (currentX + (target.x - currentX) * 0.1) + 'px';
+                ghost.style.top = (currentY + (target.y - currentY) * 0.1) + 'px';
             }
             requestAnimationFrame(animate);
         }
