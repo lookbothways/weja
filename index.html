@@ -4,71 +4,26 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>weja</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@100;300;400&display=swap" rel="stylesheet">
     <style>
-        :root {
-            --bg: #ffffff;
-            --text: #333;
-            --border: #eeeeee;
-            --key-bg: #ffffff;
-            --ghost: rgba(0, 0, 0, 0.15);
-            --status-red: #ff5f57;
-            --status-yellow: #febc2e;
-            --status-green: #28c840;
-        }
-
+        :root { --bg: #ffffff; --text: #333; --border: #eeeeee; --ghost: rgba(0, 0, 0, 0.15); --status-red: #ff5f57; --status-green: #28c840; }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { margin: 0; padding: 20px; font-family: 'Roboto', sans-serif; background: var(--bg); color: var(--text); display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; touch-action: none; }
 
-        body {
-            margin: 0;
-            padding: 20px;
-            font-family: 'Roboto', sans-serif;
-            background-color: var(--bg);
-            color: var(--text);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            overflow: hidden;
-            touch-action: none;
-        }
-
-        #status-bar {
-            position: fixed;
-            top: 15px;
-            left: 15px;
-            display: flex;
-            gap: 6px;
-        }
+        #status-bar { position: fixed; top: 15px; left: 15px; display: flex; gap: 6px; }
         .dot { width: 8px; height: 8px; border-radius: 50%; background: #eee; }
 
         #display-container { width: 100%; max-width: 600px; margin-bottom: 30px; }
-        #display {
-            width: 100%; min-height: 70px; padding: 15px; font-size: 2.2rem; font-weight: 300;
-            border: 1px solid #ddd; border-radius: 15px; text-align: center;
-            letter-spacing: 1px; word-wrap: break-word; display: flex; align-items: center; justify-content: center;
-        }
+        #display { width: 100%; min-height: 70px; padding: 15px; font-size: 2.2rem; font-weight: 300; border: 1px solid #ddd; border-radius: 15px; text-align: center; letter-spacing: 1px; display: flex; align-items: center; justify-content: center; }
 
         #keyboard { display: grid; grid-template-columns: repeat(20, 1fr); gap: 8px; width: 100%; max-width: 800px; user-select: none; }
-        .key { grid-column: span 2; height: 55px; display: flex; align-items: center; justify-content: center; background: var(--key-bg); border: 1px solid var(--border); border-radius: 8px; font-size: 1.1rem; cursor: pointer; }
+        .key { grid-column: span 2; height: 55px; display: flex; align-items: center; justify-content: center; background: #fff; border: 1px solid var(--border); border-radius: 8px; font-size: 1.1rem; cursor: pointer; }
         .key.wide { grid-column: span 12; }
         .key.return { grid-column: span 4; }
         .spacer { grid-column: span 1; }
 
-        #tally { margin-top: 60px; font-weight: 100; font-size: 1.5rem; color: #ddd; letter-spacing: 2px; cursor: pointer; }
-        #ghost-cursor { position: fixed; left: 0; top: 0; width: 30px; height: 30px; background: var(--ghost); border: 1px solid #000; border-radius: 50%; pointer-events: none; transform: translate(-50%, -50%); z-index: 9999; transition: transform 0.1s ease-out; }
-
-        /* Debug Overlay */
-        #debug-log {
-            position: fixed; bottom: 0; left: 0; width: 100%; height: 30%; background: rgba(0,0,0,0.8);
-            color: #0f0; font-family: monospace; font-size: 10px; padding: 10px; overflow-y: scroll;
-            display: none; z-index: 10000; pointer-events: auto;
-        }
-
-        @media (max-width: 600px) { .key { height: 45px; font-size: 0.9rem; } #display { font-size: 1.6rem; } }
+        #tally { margin-top: 60px; font-weight: 100; font-size: 1.5rem; color: #ddd; letter-spacing: 2px; }
+        #ghost-cursor { position: fixed; left: 0; top: 0; width: 30px; height: 30px; background: var(--ghost); border: 1px solid #000; border-radius: 50%; pointer-events: none; transform: translate(-50%, -50%); z-index: 9999; transition: all 0.05s linear; }
     </style>
 </head>
 <body>
@@ -76,153 +31,113 @@
     <div id="status-bar">
         <div id="dot-net" class="dot"></div>
         <div id="dot-local" class="dot"></div>
-        <div id="dot-mesh" class="dot"></div>
     </div>
 
-    <div id="display-container">
-        <div id="display"></div>
-    </div>
+    <div id="display-container"><div id="display"></div></div>
 
     <div id="keyboard">
-        <!-- Layout same as before -->
-        <div class="key">1</div><div class="key">2</div><div class="key">3</div><div class="key">4</div><div class="key">5</div>
-        <div class="key">6</div><div class="key">7</div><div class="key">8</div><div class="key">9</div><div class="key">0</div>
-        <div class="key">Q</div><div class="key">W</div><div class="key">E</div><div class="key">R</div><div class="key">T</div>
-        <div class="key">Y</div><div class="key">U</div><div class="key">I</div><div class="key">O</div><div class="key">P</div>
-        <div class="spacer"></div>
-        <div class="key">A</div><div class="key">S</div><div class="key">D</div><div class="key">F</div><div class="key">G</div>
-        <div class="key">H</div><div class="key">J</div><div class="key">K</div><div class="key">L</div>
-        <div class="spacer"></div>
-        <div class="spacer"></div><div class="spacer"></div>
-        <div class="key">Z</div><div class="key">X</div><div class="key">C</div><div class="key">V</div><div class="key">B</div>
-        <div class="key">N</div><div class="key">M</div>
-        <div class="key return">RET</div>
-        <div class="spacer"></div><div class="spacer"></div><div class="spacer"></div>
-        <div class="key wide">SPACE</div>
+        <div class="key">1</div><div class="key">2</div><div class="key">3</div><div class="key">4</div><div class="key">5</div><div class="key">6</div><div class="key">7</div><div class="key">8</div><div class="key">9</div><div class="key">0</div>
+        <div class="key">Q</div><div class="key">W</div><div class="key">E</div><div class="key">R</div><div class="key">T</div><div class="key">Y</div><div class="key">U</div><div class="key">I</div><div class="key">O</div><div class="key">P</div>
+        <div class="spacer"></div><div class="key">A</div><div class="key">S</div><div class="key">D</div><div class="key">F</div><div class="key">G</div><div class="key">H</div><div class="key">J</div><div class="key">K</div><div class="key">L</div><div class="spacer"></div>
+        <div class="spacer"></div><div class="spacer"></div><div class="key">Z</div><div class="key">X</div><div class="key">C</div><div class="key">V</div><div class="key">B</div><div class="key">N</div><div class="key">M</div><div class="key return">RET</div>
+        <div class="spacer"></div><div class="spacer"></div><div class="spacer"></div><div class="key wide">SPACE</div>
     </div>
 
     <div id="tally">0</div>
     <div id="ghost-cursor"></div>
-    <div id="debug-log"></div>
 
-    <script src="https://cdn.jsdelivr.net/npm/gun/gun.js"></script>
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
     <script>
-        // --- DEBUG LOG SYSTEM ---
-        const logEl = document.getElementById('debug-log');
-        const tallyEl = document.getElementById('tally');
-        function logger(msg, type='info') {
-            const line = document.createElement('div');
-            line.innerText = `[${new Date().toLocaleTimeString()}] ${msg}`;
-            logEl.appendChild(line);
-            logEl.scrollTop = logEl.scrollHeight;
-        }
-        tallyEl.onclick = () => { logEl.style.display = logEl.style.display === 'none' ? 'block' : 'none'; };
-
-        // --- ENGINE ---
-        const dotNet = document.getElementById('dot-net');
-        const dotLocal = document.getElementById('dot-local');
-        const dotMesh = document.getElementById('dot-mesh');
-        
-        // Updated Relay List (More stable options)
-        const peers = [
-            'https://gun-manhattan.herokuapp.com/gun',
-            'https://gunjs.herokuapp.com/gun',
-            'https://gun-server.herokuapp.com/gun',
-            'https://gun-us.herokuapp.com/gun',
-            'https://nw.gun.eco/gun'
-        ];
-        
-        logger("Initializing Gun...");
-        const gun = Gun({ peers: peers, localStorage: false });
-
-        const room = gun.get('weja_v5_prod');
-        const myId = Math.random().toString(36).substr(2, 9);
-        const display = document.getElementById('display');
-        const ghost = document.getElementById('ghost-cursor');
-        
-        let players = {};
-        let sharedText = "";
-        let lastLocalMove = 0;
-
-        // Listen for connections
-        gun.on('hi', (peer) => {
-            dotNet.style.background = 'var(--status-green)';
-            logger("Connected to peer: " + peer.url);
-        });
-
-        gun.on('bye', (peer) => {
-            logger("Lost peer: " + peer.url, 'warn');
-            if(Object.keys(gun._.opt.peers).length === 0) dotNet.style.background = 'var(--status-red)';
-        });
-
-        room.get('text').on((data) => {
-            if (data !== undefined) {
-                sharedText = data;
-                display.innerText = data;
-                dotMesh.style.background = 'var(--status-green)';
-            }
-        });
-
-        const handleMove = (e) => {
-            const clientX = e.clientX || (e.touches && e.touches[0].clientX);
-            const clientY = e.clientY || (e.touches && e.touches[0].clientY);
-            if (clientX && clientY) {
-                lastLocalMove = Date.now();
-                dotLocal.style.background = 'var(--status-green)';
-                room.get('players').get(myId).put({
-                    x: clientX / window.innerWidth,
-                    y: clientY / window.innerHeight,
-                    ts: lastLocalMove
-                });
-            }
+        const firebaseConfig = {
+          apiKey: "AIzaSyDefyd7IEcb08AEVU1x3yi_U7H1BwVC_sg",
+          authDomain: "wejaaaaaa.firebaseapp.com",
+          projectId: "wejaaaaaa",
+          storageBucket: "wejaaaaaa.firebasestorage.app",
+          messagingSenderId: "806504806929",
+          appId: "1:806504806929:web:0d44b73feb96fc66ce0fb0"
         };
 
-        window.addEventListener('mousemove', handleMove);
-        window.addEventListener('touchmove', handleMove);
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+        const myId = Math.random().toString(36).substr(2, 9);
+        const playerRef = db.ref('players/' + myId);
+        const textRef = db.ref('sharedText');
+        const playersRef = db.ref('players');
 
-        room.get('players').map().on((data, id) => {
-            if (data) {
-                if (!players[id] && id !== myId) logger("New player joined: " + id);
-                players[id] = data;
-                dotMesh.style.background = 'var(--status-green)';
-            }
+        const display = document.getElementById('display');
+        const tallyEl = document.getElementById('tally');
+        const ghost = document.getElementById('ghost-cursor');
+        const dotNet = document.getElementById('dot-net');
+        const dotLocal = document.getElementById('dot-local');
+
+        let allPlayers = {};
+        let sharedText = "";
+
+        // 1. Connection Status
+        db.ref(".info/connected").on("value", (snap) => {
+            dotNet.style.background = snap.val() ? 'var(--status-green)' : 'var(--status-red)';
         });
 
-        setInterval(() => {
-            const now = Date.now();
-            let sumX = 0, sumY = 0, activeCount = 0;
-            if (now - lastLocalMove > 5000) dotLocal.style.background = 'var(--status-yellow)';
+        // 2. Remove me when I disconnect
+        playerRef.onDisconnect().remove();
 
-            Object.keys(players).forEach(id => {
-                const p = players[id];
-                if (p && now - p.ts < 4000) {
-                    sumX += p.x; sumY += p.y;
-                    activeCount++;
-                } else {
-                    delete players[id];
+        // 3. Track Mouse
+        window.addEventListener('mousemove', (e) => {
+            dotLocal.style.background = 'var(--status-green)';
+            playerRef.set({
+                x: e.clientX / window.innerWidth,
+                y: e.clientY / window.innerHeight,
+                lastSeen: Date.now()
+            });
+        });
+
+        // 4. Sync Shared Text
+        textRef.on('value', (snap) => {
+            sharedText = snap.val() || "";
+            display.innerText = sharedText;
+        });
+
+        // 5. Sync All Players & Calculate Average
+        playersRef.on('value', (snap) => {
+            allPlayers = snap.val() || {};
+            let sumX = 0, sumY = 0, count = 0;
+            const now = Date.now();
+
+            Object.keys(allPlayers).forEach(id => {
+                const p = allPlayers[id];
+                // Only count players active in last 10 seconds
+                if (now - p.lastSeen < 10000) {
+                    sumX += p.x;
+                    sumY += p.y;
+                    count++;
                 }
             });
 
-            if (activeCount > 0) {
-                const avgX = (sumX / activeCount) * window.innerWidth;
-                const avgY = (sumY / activeCount) * window.innerHeight;
+            if (count > 0) {
+                const avgX = (sumX / count) * window.innerWidth;
+                const avgY = (sumY / count) * window.innerHeight;
                 ghost.style.left = avgX + 'px';
                 ghost.style.top = avgY + 'px';
-                tallyEl.innerText = activeCount;
+                tallyEl.innerText = count;
             }
-        }, 40);
+        });
 
+        // 6. Typing Logic (at ghost position)
         window.addEventListener('mousedown', () => {
             const rect = ghost.getBoundingClientRect();
             const el = document.elementFromPoint(rect.left + 15, rect.top + 15);
+
             if (el && el.classList.contains('key')) {
                 let char = el.innerText;
                 let nextText = sharedText;
                 if (char === 'SPACE') nextText += ' ';
                 else if (char === 'RET') nextText = "";
                 else nextText += char;
-                room.get('text').put(nextText.slice(-24));
+                textRef.set(nextText.slice(-20));
             }
         });
     </script>
