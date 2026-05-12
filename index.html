@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>weja</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #ffffff;
+            --text: #333;
+            --border: #e0e0e0;
+            --key-bg: #fafafa;
+        }
+
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: 'Roboto', sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+            touch-action: none;
+        }
+
+        #display-container {
+            width: 100%;
+            max-width: 800px;
+            margin-top: 40px;
+            margin-bottom: 40px;
+        }
+
+        #display {
+            width: 100%;
+            min-height: 80px;
+            padding: 20px;
+            font-size: 2rem;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-align: center;
+            letter-spacing: 2px;
+            word-wrap: break-word;
+            box-sizing: border-box;
+        }
+
+        #keyboard {
+            display: grid;
+            grid-template-columns: repeat(20, 1fr);
+            gap: 6px;
+            width: 100%;
+            max-width: 900px;
+            position: relative;
+            user-select: none;
+        }
+
+        .key {
+            grid-column: span 2;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--key-bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: background 0.1s;
+        }
+
+        /* Layout Adjustments */
+        .key.wide { grid-column: span 10; }
+        .key.med { grid-column: span 3; }
+        .key.return { grid-column: span 4; }
+
+        #tally {
+            margin-top: 50px;
+            font-weight: 300;
+            font-size: 0.9rem;
+            color: #ccc;
+            letter-spacing: 1px;
+        }
+
+        #ghost-cursor {
+            position: fixed;
+            width: 20px;
+            height: 20px;
+            background: rgba(0, 0, 0, 0.2);
+            border: 2px solid #000;
+            border-radius: 50%;
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+            z-index: 9999;
+            transition: all 0.1s ease-out;
+        }
+
+        @media (max-width: 600px) {
+            .key { height: 40px; font-size: 0.9rem; }
+            #display { font-size: 1.5rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="display-container">
+        <div id="display"></div>
+    </div>
+
+    <div id="keyboard">
+        <!-- Row 1 -->
+        <div class="key">1</div><div class="key">2</div><div class="key">3</div><div class="key">4</div><div class="key">5</div>
+        <div class="key">6</div><div class="key">7</div><div class="key">8</div><div class="key">9</div><div class="key">0</div>
+        <!-- Row 2 -->
+        <div class="key">Q</div><div class="key">W</div><div class="key">E</div><div class="key">R</div><div class="key">T</div>
+        <div class="key">Y</div><div class="key">U</div><div class="key">I</div><div class="key">O</div><div class="key">P</div>
+        <!-- Row 3 -->
+        <div class="key">A</div><div class="key">S</div><div class="key">D</div><div class="key">F</div><div class="key">G</div>
+        <div class="key">H</div><div class="key">J</div><div class="key">K</div><div class="key">L</div><div class="key med">.</div>
+        <!-- Row 4 -->
+        <div class="key">Z</div><div class="key">X</div><div class="key">C</div><div class="key">V</div><div class="key">B</div>
+        <div class="key">N</div><div class="key">M</div><div class="key med">,</div><div class="key return">RET</div>
+        <!-- Row 5 -->
+        <div class="key wide">SPACE</div>
+    </div>
+
+    <div id="tally">0</div>
+
+    <div id="ghost-cursor"></div>
+
+    <!-- Gun.js for real-time sync -->
+    <script src="https://cdn.jsdelivr.net/npm/gun/gun.js"></script>
+
+    <script>
+        const gun = Gun(['https://gun-manhattan.herokuapp.com/gun']);
+        const room = gun.get('weja-global-room-001');
+        const myId = Math.random().toString(36).substr(2, 9);
+        
+        const display = document.getElementById('display');
+        const tally = document.getElementById('tally');
+        const ghost = document.getElementById('ghost-cursor');
+        const kb = document.getElementById('keyboard');
+
+        let allPositions = {};
+        let sharedText = "";
+
+        // 1. SYNC TEXT
+        room.get('text').on((data) => {
+            if (data !== undefined) {
+                sharedText = data;
+                display.innerText = data;
+            }
+        });
+
+        // 2. SYNC MOUSE POSITIONS
+        window.addEventListener('mousemove', (e) => {
+            const x = e.clientX / window.innerWidth;
+            const y = e.clientY / window.innerHeight;
+            room.get('positions').get(myId).put({x, y, ts: Date.now()});
+        });
+
+        // Touch support
+        window.addEventListener('touchmove', (e) => {
+            const x = e.touches[0].clientX / window.innerWidth;
+            const y = e.touches[0].clientY / window.innerHeight;
+            room.get('positions').get(myId).put({x, y, ts: Date.now()});
+        });
+
+        // 3. CALCULATE AVERAGE AND CLEAN UP IDLE USERS
+        setInterval(() => {
+            room.get('positions').once((data) => {
+                if (!data) return;
+                let sumX = 0, sumY = 0, count = 0;
+                const now = Date.now();
+
+                Object.keys(data).forEach(id => {
+                    if (id === '_') return;
+                    const pos = data[id];
+                    // Only count users active in last 5 seconds
+                    if (pos && now - pos.ts < 5000) {
+                        sumX += pos.x;
+                        sumY += pos.y;
+                        count++;
+                    }
+                });
+
+                if (count > 0) {
+                    const avgX = (sumX / count) * window.innerWidth;
+                    const avgY = (sumY / count) * window.innerHeight;
+                    ghost.style.left = avgX + 'px';
+                    ghost.style.top = avgY + 'px';
+                    tally.innerText = count;
+                }
+            });
+        }, 50);
+
+        // 4. CLICK LOGIC (Type at average position)
+        window.addEventListener('click', (e) => {
+            const rect = ghost.getBoundingClientRect();
+            // Find element at ghost cursor's center
+            const el = document.elementFromPoint(rect.left + 10, rect.top + 10);
+            
+            if (el && el.classList.contains('key')) {
+                let char = el.innerText;
+                if (char === 'SPACE') char = ' ';
+                if (char === 'RET') char = '\n';
+                
+                let newText = sharedText + char;
+                if (char === '\n') newText = ""; // Reset on return for the experiment
+                
+                room.get('text').put(newText.slice(-30)); // Keep it short
+            }
+        });
+
+    </script>
+</body>
+</html>
