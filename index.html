@@ -6,20 +6,57 @@
     <title>weja</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@100;300;400&display=swap" rel="stylesheet">
     <style>
-        :root { --bg: #ffffff; --text: #333; --border: #eeeeee; --ghost: rgba(0, 0, 0, 0.15); --status-red: #ff5f57; --status-green: #28c840; }
+        :root { 
+            --bg: #ffffff; --text: #333; --border: #eeeeee; 
+            --ghost: rgba(0, 0, 0, 0.15); --status-red: #ff5f57; --status-green: #28c840; 
+        }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { margin: 0; padding: 20px; font-family: 'Roboto', sans-serif; background: var(--bg); color: var(--text); display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; touch-action: none; }
+        body { 
+            margin: 0; padding: 20px; font-family: 'Roboto', sans-serif; 
+            background: var(--bg); color: var(--text); display: flex; 
+            flex-direction: column; align-items: center; justify-content: center; 
+            height: 100vh; overflow: hidden; touch-action: none; 
+        }
+        
         #status-bar { position: fixed; top: 15px; left: 15px; display: flex; gap: 6px; }
         .dot { width: 8px; height: 8px; border-radius: 50%; background: #eee; }
-        #display-container { width: 100%; max-width: 600px; margin-bottom: 30px; }
-        #display { width: 100%; min-height: 70px; padding: 15px; font-size: 2.2rem; font-weight: 300; border: 1px solid #ddd; border-radius: 15px; text-align: center; letter-spacing: 1px; display: flex; align-items: center; justify-content: center; }
+
+        #container {
+            width: 100%; max-width: 600px;
+            display: flex; flex-direction: column; align-items: center;
+        }
+
+        /* Message History Styling */
+        #history {
+            width: 100%; height: 120px;
+            display: flex; flex-direction: column;
+            justify-content: flex-end;
+            margin-bottom: 10px;
+            mask-image: linear-gradient(to top, black 60%, transparent 100%);
+        }
+        .msg {
+            color: #999; font-size: 1.4rem; font-weight: 300;
+            text-align: center; margin: 4px 0;
+            animation: slideUp 0.4s ease-out;
+        }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        #display { 
+            width: 100%; min-height: 70px; padding: 15px; 
+            font-size: 2.2rem; font-weight: 300; border: 1px solid #ddd; 
+            border-radius: 15px; text-align: center; letter-spacing: 1px; 
+            display: flex; align-items: center; justify-content: center;
+            background: white; z-index: 2; margin-bottom: 30px;
+        }
+
         #keyboard { display: grid; grid-template-columns: repeat(20, 1fr); gap: 8px; width: 100%; max-width: 800px; user-select: none; }
         .key { grid-column: span 2; height: 55px; display: flex; align-items: center; justify-content: center; background: #fff; border: 1px solid var(--border); border-radius: 8px; font-size: 1.1rem; cursor: pointer; }
         .key.wide { grid-column: span 12; }
-        .key.return { grid-column: span 4; }
+        .key.send { grid-column: span 4; background: #fafafa; font-weight: 400; font-size: 0.9rem; letter-spacing: 1px; }
         .spacer { grid-column: span 1; }
+
         #tally { margin-top: 60px; font-weight: 100; font-size: 1.5rem; color: #ddd; letter-spacing: 2px; }
-        #ghost-cursor { position: fixed; left: 50%; top: 50%; width: 30px; height: 30px; background: var(--ghost); border: 1px solid #000; border-radius: 50%; pointer-events: none; transform: translate(-50%, -50%); z-index: 9999; transition: all 0.1s linear; }
+        #ghost-cursor { position: fixed; left: 50%; top: 50%; width: 30px; height: 30px; background: var(--ghost); border: 1px solid #000; border-radius: 50%; pointer-events: none; transform: translate(-50%, -50%); z-index: 9999; transition: all 0.05s linear; }
     </style>
 </head>
 <body>
@@ -29,13 +66,16 @@
         <div id="dot-local" class="dot"></div>
     </div>
 
-    <div id="display-container"><div id="display"></div></div>
+    <div id="container">
+        <div id="history"></div>
+        <div id="display"></div>
+    </div>
 
     <div id="keyboard">
         <div class="key">1</div><div class="key">2</div><div class="key">3</div><div class="key">4</div><div class="key">5</div><div class="key">6</div><div class="key">7</div><div class="key">8</div><div class="key">9</div><div class="key">0</div>
         <div class="key">Q</div><div class="key">W</div><div class="key">E</div><div class="key">R</div><div class="key">T</div><div class="key">Y</div><div class="key">U</div><div class="key">I</div><div class="key">O</div><div class="key">P</div>
         <div class="spacer"></div><div class="key">A</div><div class="key">S</div><div class="key">D</div><div class="key">F</div><div class="key">G</div><div class="key">H</div><div class="key">J</div><div class="key">K</div><div class="key">L</div><div class="spacer"></div>
-        <div class="spacer"></div><div class="spacer"></div><div class="key">Z</div><div class="key">X</div><div class="key">C</div><div class="key">V</div><div class="key">B</div><div class="key">N</div><div class="key">M</div><div class="key return">RET</div>
+        <div class="spacer"></div><div class="spacer"></div><div class="key">Z</div><div class="key">X</div><div class="key">C</div><div class="key">V</div><div class="key">B</div><div class="key">N</div><div class="key">M</div><div class="key send">SEND</div>
         <div class="spacer"></div><div class="spacer"></div><div class="spacer"></div><div class="key wide">SPACE</div>
     </div>
 
@@ -46,24 +86,28 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
     <script>
-    const firebaseConfig = {
-    apiKey: "AIzaSyDefyd7IEcb08AEVU1x3yi_U7H1BwVC_sg",
-    authDomain: "wejaaaaaa.firebaseapp.com",
-    databaseURL: "https://wejaaaaaa-default-rtdb.europe-west1.firebasedatabase.app",
-    projectId: "wejaaaaaa",
-    storageBucket: "wejaaaaaa.firebasestorage.app",
-    messagingSenderId: "806504806929",
-    appId: "1:806504806929:web:0d44b73feb96fc66ce0fb0"
-    };
+        const firebaseConfig = {
+          apiKey: "AIzaSyDefyd7IEcb08AEVU1x3yi_U7H1BwVC_sg",
+          authDomain: "wejaaaaaa.firebaseapp.com",
+          databaseURL: "https://wejaaaaaa-default-rtdb.europe-west1.firebasedatabase.app",
+          projectId: "wejaaaaaa",
+          storageBucket: "wejaaaaaa.firebasestorage.app",
+          messagingSenderId: "806504806929",
+          appId: "1:806504806929:web:0d44b73feb96fc66ce0fb0"
+        };
 
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
         const myId = Math.random().toString(36).substr(2, 9);
+        const joinedAt = Date.now();
+        
         const playerRef = db.ref('players/' + myId);
         const textRef = db.ref('sharedText');
         const playersRef = db.ref('players');
+        const historyRef = db.ref('history');
 
         const display = document.getElementById('display');
+        const historyEl = document.getElementById('history');
         const tallyEl = document.getElementById('tally');
         const ghost = document.getElementById('ghost-cursor');
         const dotNet = document.getElementById('dot-net');
@@ -72,62 +116,71 @@
         let allPlayers = {};
         let sharedText = "";
 
-        // 1. Connection check
         db.ref(".info/connected").on("value", (snap) => {
             dotNet.style.background = snap.val() ? 'var(--status-green)' : 'var(--status-red)';
         });
-
         playerRef.onDisconnect().remove();
 
-        // 2. Throttled Position Sending
+        // 1. Position tracking
         let lastSend = 0;
         function sendPos(x, y) {
             const now = Date.now();
-            if (now - lastSend < 50) return; // Send every 50ms
+            if (now - lastSend < 50) return;
             lastSend = now;
-            
-            playerRef.set({
-                x: x / window.innerWidth,
-                y: y / window.innerHeight,
-                lastSeen: now
-            }).then(() => {
-                dotLocal.style.background = 'var(--status-green)';
-            }).catch((err) => {
-                console.error("Firebase write error:", err);
-                dotLocal.style.background = 'var(--status-red)';
-            });
+            playerRef.set({ x: x / window.innerWidth, y: y / window.innerHeight, lastSeen: now, joinedAt: joinedAt });
+            dotLocal.style.background = 'var(--status-green)';
         }
-
         window.addEventListener('mousemove', (e) => sendPos(e.clientX, e.clientY));
-        window.addEventListener('touchmove', (e) => {
-            if (e.touches[0]) sendPos(e.touches[0].clientX, e.touches[0].clientY);
-        }, { passive: true });
+        window.addEventListener('touchmove', (e) => { if (e.touches[0]) sendPos(e.touches[0].clientX, e.touches[0].clientY); }, { passive: true });
 
-        // 3. Receive shared text
-        textRef.on('value', (snap) => {
-            sharedText = snap.val() || "";
-            display.innerText = sharedText;
+        // 2. Shared Text Sync
+        textRef.on('value', (snap) => { sharedText = snap.val() || ""; display.innerText = sharedText; });
+
+        // 3. History Sync (Last 10)
+        historyRef.limitToLast(10).on('value', (snap) => {
+            historyEl.innerHTML = "";
+            snap.forEach((child) => {
+                const div = document.createElement('div');
+                div.className = 'msg';
+                div.innerText = child.val();
+                historyEl.appendChild(div);
+            });
         });
 
-        // 4. Update Ghost Position from shared data
+        // 4. Weighted Pull Engine
         playersRef.on('value', (snap) => {
             allPlayers = snap.val() || {};
-            let sumX = 0, sumY = 0, count = 0;
             const now = Date.now();
+            const activePlayers = Object.keys(allPlayers)
+                .map(id => ({ id, ...allPlayers[id] }))
+                .filter(p => now - p.lastSeen < 6000)
+                .sort((a, b) => a.joinedAt - b.joinedAt);
 
-            Object.keys(allPlayers).forEach(id => {
-                const p = allPlayers[id];
-                // Only count players who were active in the last 6 seconds
-                if (p && now - p.lastSeen < 6000) {
-                    sumX += p.x;
-                    sumY += p.y;
-                    count++;
-                }
-            });
-
+            const count = activePlayers.length;
             if (count > 0) {
-                const avgX = (sumX / count) * window.innerWidth;
-                const avgY = (sumY / count) * window.innerHeight;
+                // Orbit Math: 5 second total cycle
+                const orbitTime = 5000; 
+                const timeInOrbit = (now % (orbitTime));
+                const focusIndex = (timeInOrbit / orbitTime) * count;
+
+                let sumX = 0, sumY = 0, sumWeight = 0;
+
+                activePlayers.forEach((p, i) => {
+                    // Calculate distance from current focus on a circular loop
+                    let dist = Math.abs(i - focusIndex);
+                    if (dist > count / 2) dist = count - dist;
+
+                    // Weighting: 0.1 base + 0.8 oscillation peak
+                    // This creates a "pulse" of control that moves from Player 1 to Player N
+                    const weight = 0.1 + (0.8 * Math.exp(-(dist * dist) / 0.5));
+                    
+                    sumX += p.x * weight;
+                    sumY += p.y * weight;
+                    sumWeight += weight;
+                });
+
+                const avgX = (sumX / sumWeight) * window.innerWidth;
+                const avgY = (sumY / sumWeight) * window.innerHeight;
                 ghost.style.left = avgX + 'px';
                 ghost.style.top = avgY + 'px';
                 tallyEl.innerText = count;
@@ -136,29 +189,38 @@
             }
         });
 
-        // 5. Shared Typing Logic
+        // 5. Shared Typing / Sending
         function tryType(e) {
-            // Prevent default only if touching a key to avoid breaking scroll
             const rect = ghost.getBoundingClientRect();
             const el = document.elementFromPoint(rect.left + 15, rect.top + 15);
             
             if (el && el.classList.contains('key')) {
-                if(e) e.preventDefault(); 
+                if(e) e.preventDefault();
                 let char = el.innerText;
-                let nextText = sharedText;
-                if (char === 'SPACE') nextText += ' ';
-                else if (char === 'RET') nextText = "";
-                else nextText += char;
-                textRef.set(nextText.slice(-24));
+                
+                if (char === 'SEND') {
+                    if (sharedText.trim().length > 0) {
+                        historyRef.push(sharedText);
+                        textRef.set("");
+                        // Prune history to 10 entries
+                        historyRef.once('value', s => {
+                            if (s.numChildren() > 10) {
+                                let i = 0;
+                                s.forEach(child => { if (i++ < s.numChildren() - 10) child.ref.remove(); });
+                            }
+                        });
+                    }
+                } else {
+                    let nextText = sharedText;
+                    if (char === 'SPACE') nextText += ' ';
+                    else nextText += char;
+                    textRef.set(nextText.slice(-24));
+                }
             }
         }
         window.addEventListener('mousedown', tryType);
         window.addEventListener('touchstart', (e) => {
-            // Send position immediately on touch, then check for type
-            if (e.touches[0]) {
-                sendPos(e.touches[0].clientX, e.touches[0].clientY);
-                tryType(e);
-            }
+            if (e.touches[0]) { sendPos(e.touches[0].clientX, e.touches[0].clientY); tryType(e); }
         }, { passive: false });
     </script>
 </body>
