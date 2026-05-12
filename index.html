@@ -8,7 +8,9 @@
     <style>
         :root { 
             --bg: #ffffff; --text: #333; --border: #eeeeee; 
-            --ghost: rgba(0, 0, 0, 0.15); --status-red: #ff5f57; --status-green: #28c840; 
+            --ghost: rgba(0, 0, 0, 0.2); 
+            --player-dot: #add8e6; /* Pale Blue */
+            --status-red: #ff5f57; --status-green: #28c840; 
         }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { 
@@ -18,7 +20,7 @@
             height: 100vh; overflow: hidden; touch-action: none; 
         }
         
-        #status-bar { position: fixed; top: 15px; left: 15px; display: flex; gap: 6px; }
+        #status-bar { position: fixed; top: 15px; left: 15px; display: flex; gap: 6px; z-index: 100; }
         .dot { width: 8px; height: 8px; border-radius: 50%; background: #eee; }
 
         #container { width: 100%; max-width: 600px; display: flex; flex-direction: column; align-items: center; }
@@ -34,32 +36,36 @@
         #display { 
             width: 100%; min-height: 60px; padding: 10px; font-size: 1.8rem; font-weight: 300; 
             border: 1px solid #ddd; border-radius: 15px; text-align: center; letter-spacing: 1px; 
-            display: flex; align-items: center; justify-content: center; background: white; margin-bottom: 20px;
+            display: flex; align-items: center; justify-content: center; background: white; margin-bottom: 30px;
+            z-index: 10;
         }
 
-        #keyboard { display: grid; grid-template-columns: repeat(20, 1fr); gap: 6px; width: 100%; max-width: 800px; user-select: none; }
-        .key { grid-column: span 2; height: 45px; display: flex; align-items: center; justify-content: center; background: #fff; border: 1px solid var(--border); border-radius: 6px; font-size: 1rem; cursor: pointer; }
+        #keyboard { 
+            display: grid; grid-template-columns: repeat(20, 1fr); gap: 6px; 
+            width: 100%; max-width: 800px; user-select: none; z-index: 10;
+        }
+        .key { grid-column: span 2; height: 50px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.8); border: 1px solid var(--border); border-radius: 6px; font-size: 1rem; cursor: pointer; }
         .key.wide { grid-column: span 12; }
-        .key.gray { grid-column: span 3; background: #fcfcfc; color: #999; font-size: 0.75rem; letter-spacing: 1px; }
+        .key.gray { grid-column: span 3; background: #fafafa; color: #999; font-size: 0.75rem; letter-spacing: 1px; }
         .spacer { grid-column: span 1; }
 
-        #mobile-controls {
-            display: none; /* Shown via JS if mobile */
-            width: 100%; max-width: 400px; margin-top: 20px; flex-direction: column; gap: 10px;
-        }
-        #trackpad {
-            width: 100%; height: 140px; background: #f9f9f9; border: 1px solid #eee; border-radius: 20px;
-            display: flex; align-items: center; justify-content: center; padding: 30px;
-            text-align: center; color: #bbb; font-size: 0.8rem; font-weight: 300; line-height: 1.4;
-        }
-        #transmit {
-            width: 100%; height: 60px; background: #333; color: white; border-radius: 20px;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 1rem; letter-spacing: 2px; font-weight: 300; cursor: pointer;
+        #tally { margin-top: 40px; font-weight: 100; font-size: 1.2rem; color: #ddd; letter-spacing: 2px; }
+
+        /* The main shared cursor */
+        #ghost-cursor { 
+            position: fixed; left: 50%; top: 50%; width: 30px; height: 30px; 
+            background: var(--ghost); border: 1px solid #333; border-radius: 50%; 
+            pointer-events: none; transform: translate(-50%, -50%); z-index: 9999; 
         }
 
-        #tally { margin-top: 30px; font-weight: 100; font-size: 1.2rem; color: #ddd; letter-spacing: 2px; }
-        #ghost-cursor { position: fixed; left: 50%; top: 50%; width: 30px; height: 30px; background: var(--ghost); border: 1px solid #000; border-radius: 50%; pointer-events: none; transform: translate(-50%, -50%); z-index: 9999; }
+        /* Individual player dots */
+        .player-dot {
+            position: fixed; width: 8px; height: 8px; 
+            background: var(--player-dot); border-radius: 50%; 
+            pointer-events: none; transform: translate(-50%, -50%);
+            z-index: 5000; transition: all 0.1s linear;
+            box-shadow: 0 0 5px rgba(173, 216, 230, 0.5);
+        }
     </style>
 </head>
 <body>
@@ -80,11 +86,6 @@
         <div class="spacer"></div><div class="key">A</div><div class="key">S</div><div class="key">D</div><div class="key">F</div><div class="key">G</div><div class="key">H</div><div class="key">J</div><div class="key">K</div><div class="key">L</div><div class="spacer"></div>
         <div class="key gray">DEL</div><div class="key">Z</div><div class="key">X</div><div class="key">C</div><div class="key">V</div><div class="key">B</div><div class="key">N</div><div class="key">M</div><div class="key gray">SEND</div>
         <div class="spacer"></div><div class="spacer"></div><div class="spacer"></div><div class="key wide">SPACE</div>
-    </div>
-
-    <div id="mobile-controls">
-        <div id="trackpad">Use two fingers:<br>One to guide the souls,<br>tap transmit to convey a glyph.</div>
-        <div id="transmit">TRANSMIT</div>
     </div>
 
     <div id="tally">0</div>
@@ -120,15 +121,10 @@
         const ghost = document.getElementById('ghost-cursor');
         const dotNet = document.getElementById('dot-net');
         const dotLocal = document.getElementById('dot-local');
-        const mobileControls = document.getElementById('mobile-controls');
-        const trackpad = document.getElementById('trackpad');
-        const transmitBtn = document.getElementById('transmit');
 
         let allPlayers = {};
+        let playerDots = {}; // Store DOM elements for blue dots
         let sharedText = "";
-        let isMobile = ('ontouchstart' in window);
-
-        if (isMobile) mobileControls.style.display = 'flex';
 
         db.ref(".info/connected").on("value", (snap) => {
             dotNet.style.background = snap.val() ? 'var(--status-green)' : 'var(--status-red)';
@@ -140,22 +136,14 @@
             dotLocal.style.background = 'var(--status-green)';
         }
 
-        // DESKTOP POSITIONING
-        window.addEventListener('mousemove', (e) => { if(!isMobile) sendPos(e.clientX, e.clientY); });
+        // Global listeners for movement
+        window.addEventListener('mousemove', (e) => sendPos(e.clientX, e.clientY));
+        window.addEventListener('touchmove', (e) => {
+            if (e.touches[0]) sendPos(e.touches[0].clientX, e.touches[0].clientY);
+        }, { passive: true });
 
-        // MOBILE POSITIONING (TRACKPAD)
-        trackpad.addEventListener('touchmove', (e) => {
-            e.preventDefault();
-            const touch = e.touches[0];
-            const rect = trackpad.getBoundingClientRect();
-            // Map trackpad internal coordinates to full-screen percentage
-            const x = ((touch.clientX - rect.left) / rect.width) * window.innerWidth;
-            const y = ((touch.clientY - rect.top) / rect.height) * window.innerHeight;
-            sendPos(x, y);
-        }, { passive: false });
-
+        // Sync shared components
         textRef.on('value', (snap) => { sharedText = snap.val() || ""; display.innerText = sharedText; });
-
         historyRef.limitToLast(10).on('value', (snap) => {
             historyEl.innerHTML = "";
             snap.forEach((child) => {
@@ -166,8 +154,10 @@
             });
         });
 
+        // Sync all players
         playersRef.on('value', (snap) => { allPlayers = snap.val() || {}; });
 
+        // THE ENGINE
         function animate() {
             const now = Date.now();
             const activePlayers = Object.keys(allPlayers)
@@ -175,9 +165,30 @@
                 .filter(p => now - p.lastSeen < 6000)
                 .sort((a, b) => a.joinedAt - b.joinedAt);
 
-            const count = activePlayers.length;
-            tallyEl.innerText = count;
+            tallyEl.innerText = activePlayers.length;
 
+            // 1. Update/Clean Player Dots (Blue dots)
+            activePlayers.forEach(p => {
+                if (!playerDots[p.id]) {
+                    const dot = document.createElement('div');
+                    dot.className = 'player-dot';
+                    document.body.appendChild(dot);
+                    playerDots[p.id] = dot;
+                }
+                playerDots[p.id].style.left = (p.x * window.innerWidth) + 'px';
+                playerDots[p.id].style.top = (p.y * window.innerHeight) + 'px';
+            });
+
+            // Clean up dots for players who left
+            Object.keys(playerDots).forEach(id => {
+                if (!activePlayers.find(p => p.id === id)) {
+                    playerDots[id].remove();
+                    delete playerDots[id];
+                }
+            });
+
+            // 2. Calculate Ghost weighted position
+            const count = activePlayers.length;
             if (count > 0) {
                 const orbitTime = 5000; 
                 const focus = ((now % orbitTime) / orbitTime) * count;
@@ -196,30 +207,25 @@
                 const targetY = (sumY / sumWeight) * window.innerHeight;
                 const currentX = parseFloat(ghost.style.left) || targetX;
                 const currentY = parseFloat(ghost.style.top) || targetY;
-                ghost.style.left = (currentX + (targetX - currentX) * 0.2) + 'px';
-                ghost.style.top = (currentY + (targetY - currentY) * 0.2) + 'px';
+                
+                ghost.style.left = (currentX + (targetX - currentX) * 0.15) + 'px';
+                ghost.style.top = (currentY + (targetY - currentY) * 0.15) + 'px';
             }
             requestAnimationFrame(animate);
         }
         requestAnimationFrame(animate);
 
         function tryType(e) {
-            if(e) e.preventDefault();
             const rect = ghost.getBoundingClientRect();
             const el = document.elementFromPoint(rect.left + 15, rect.top + 15);
             
             if (el && el.classList.contains('key')) {
+                if(e) e.preventDefault();
                 let char = el.innerText;
                 if (char === 'SEND') {
                     if (sharedText.trim().length > 0) {
                         historyRef.push(sharedText);
                         textRef.set("");
-                        historyRef.once('value', s => {
-                            if (s.numChildren() > 10) {
-                                let c = 0;
-                                s.forEach(child => { if (c++ < s.numChildren() - 10) child.ref.remove(); });
-                            }
-                        });
                     }
                 } else if (char === 'DEL') {
                     textRef.set(sharedText.slice(0, -1));
@@ -232,8 +238,13 @@
             }
         }
 
-        window.addEventListener('mousedown', (e) => { if(!isMobile) tryType(e); });
-        transmitBtn.addEventListener('touchstart', (e) => { tryType(e); });
+        window.addEventListener('mousedown', tryType);
+        window.addEventListener('touchstart', (e) => {
+            if (e.touches[0]) {
+                sendPos(e.touches[0].clientX, e.touches[0].clientY);
+                tryType(e);
+            }
+        }, { passive: false });
     </script>
 </body>
 </html>
