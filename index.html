@@ -9,21 +9,17 @@
         :root { --bg: #ffffff; --text: #333; --border: #eeeeee; --ghost: rgba(0, 0, 0, 0.15); --status-red: #ff5f57; --status-green: #28c840; }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { margin: 0; padding: 20px; font-family: 'Roboto', sans-serif; background: var(--bg); color: var(--text); display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; touch-action: none; }
-
         #status-bar { position: fixed; top: 15px; left: 15px; display: flex; gap: 6px; }
         .dot { width: 8px; height: 8px; border-radius: 50%; background: #eee; }
-
         #display-container { width: 100%; max-width: 600px; margin-bottom: 30px; }
         #display { width: 100%; min-height: 70px; padding: 15px; font-size: 2.2rem; font-weight: 300; border: 1px solid #ddd; border-radius: 15px; text-align: center; letter-spacing: 1px; display: flex; align-items: center; justify-content: center; }
-
         #keyboard { display: grid; grid-template-columns: repeat(20, 1fr); gap: 8px; width: 100%; max-width: 800px; user-select: none; }
         .key { grid-column: span 2; height: 55px; display: flex; align-items: center; justify-content: center; background: #fff; border: 1px solid var(--border); border-radius: 8px; font-size: 1.1rem; cursor: pointer; }
         .key.wide { grid-column: span 12; }
         .key.return { grid-column: span 4; }
         .spacer { grid-column: span 1; }
-
         #tally { margin-top: 60px; font-weight: 100; font-size: 1.5rem; color: #ddd; letter-spacing: 2px; }
-        #ghost-cursor { position: fixed; left: 0; top: 0; width: 30px; height: 30px; background: var(--ghost); border: 1px solid #000; border-radius: 50%; pointer-events: none; transform: translate(-50%, -50%); z-index: 9999; transition: all 0.05s linear; }
+        #ghost-cursor { position: fixed; left: 50%; top: 50%; width: 30px; height: 30px; background: var(--ghost); border: 1px solid #000; border-radius: 50%; pointer-events: none; transform: translate(-50%, -50%); z-index: 9999; transition: all 0.1s linear; }
     </style>
 </head>
 <body>
@@ -46,20 +42,19 @@
     <div id="tally">0</div>
     <div id="ghost-cursor"></div>
 
-    <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
     <script>
-        const firebaseConfig = {
-          apiKey: "AIzaSyDefyd7IEcb08AEVU1x3yi_U7H1BwVC_sg",
-          authDomain: "wejaaaaaa.firebaseapp.com",
-          databaseURL: "https://wejaaaaaa-default-rtdb.firebaseio.com",
-          projectId: "wejaaaaaa",
-          storageBucket: "wejaaaaaa.firebasestorage.app",
-          messagingSenderId: "806504806929",
-          appId: "1:806504806929:web:0d44b73feb96fc66ce0fb0"
-        };
+    const firebaseConfig = {
+    apiKey: "AIzaSyDefyd7IEcb08AEVU1x3yi_U7H1BwVC_sg",
+    authDomain: "wejaaaaaa.firebaseapp.com",
+    databaseURL: "https://wejaaaaaa-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "wejaaaaaa",
+    storageBucket: "wejaaaaaa.firebasestorage.app",
+    messagingSenderId: "806504806929",
+    appId: "1:806504806929:web:0d44b73feb96fc66ce0fb0"
+    };
 
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
@@ -77,41 +72,44 @@
         let allPlayers = {};
         let sharedText = "";
 
-        // Connection status
+        // 1. Connection check
         db.ref(".info/connected").on("value", (snap) => {
             dotNet.style.background = snap.val() ? 'var(--status-green)' : 'var(--status-red)';
         });
 
         playerRef.onDisconnect().remove();
 
-        // Throttled position update (mouse + touch)
+        // 2. Throttled Position Sending
         let lastSend = 0;
         function sendPos(x, y) {
             const now = Date.now();
-            if (now - lastSend < 50) return;
+            if (now - lastSend < 50) return; // Send every 50ms
             lastSend = now;
-            dotLocal.style.background = 'var(--status-green)';
+            
             playerRef.set({
                 x: x / window.innerWidth,
                 y: y / window.innerHeight,
                 lastSeen: now
+            }).then(() => {
+                dotLocal.style.background = 'var(--status-green)';
+            }).catch((err) => {
+                console.error("Firebase write error:", err);
+                dotLocal.style.background = 'var(--status-red)';
             });
         }
+
         window.addEventListener('mousemove', (e) => sendPos(e.clientX, e.clientY));
         window.addEventListener('touchmove', (e) => {
             if (e.touches[0]) sendPos(e.touches[0].clientX, e.touches[0].clientY);
         }, { passive: true });
-        window.addEventListener('touchstart', (e) => {
-            if (e.touches[0]) sendPos(e.touches[0].clientX, e.touches[0].clientY);
-        }, { passive: true });
 
-        // Sync shared text
+        // 3. Receive shared text
         textRef.on('value', (snap) => {
             sharedText = snap.val() || "";
             display.innerText = sharedText;
         });
 
-        // Sync players + average position
+        // 4. Update Ghost Position from shared data
         playersRef.on('value', (snap) => {
             allPlayers = snap.val() || {};
             let sumX = 0, sumY = 0, count = 0;
@@ -119,7 +117,8 @@
 
             Object.keys(allPlayers).forEach(id => {
                 const p = allPlayers[id];
-                if (p && now - p.lastSeen < 10000) {
+                // Only count players who were active in the last 6 seconds
+                if (p && now - p.lastSeen < 6000) {
                     sumX += p.x;
                     sumY += p.y;
                     count++;
@@ -132,24 +131,35 @@
                 ghost.style.left = avgX + 'px';
                 ghost.style.top = avgY + 'px';
                 tallyEl.innerText = count;
+            } else {
+                tallyEl.innerText = "0";
             }
         });
 
-        // Typing at ghost position (mouse + touch)
-        function tryType() {
+        // 5. Shared Typing Logic
+        function tryType(e) {
+            // Prevent default only if touching a key to avoid breaking scroll
             const rect = ghost.getBoundingClientRect();
             const el = document.elementFromPoint(rect.left + 15, rect.top + 15);
+            
             if (el && el.classList.contains('key')) {
+                if(e) e.preventDefault(); 
                 let char = el.innerText;
                 let nextText = sharedText;
                 if (char === 'SPACE') nextText += ' ';
                 else if (char === 'RET') nextText = "";
                 else nextText += char;
-                textRef.set(nextText.slice(-20));
+                textRef.set(nextText.slice(-24));
             }
         }
         window.addEventListener('mousedown', tryType);
-        window.addEventListener('touchend', tryType);
+        window.addEventListener('touchstart', (e) => {
+            // Send position immediately on touch, then check for type
+            if (e.touches[0]) {
+                sendPos(e.touches[0].clientX, e.touches[0].clientY);
+                tryType(e);
+            }
+        }, { passive: false });
     </script>
 </body>
 </html>
