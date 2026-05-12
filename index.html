@@ -9,10 +9,10 @@
         :root { 
             --bg: #ffffff; --text: #333; --border: #eeeeee; 
             --ghost: rgba(0, 0, 0, 0.2); 
-            --player-dot: #add8e6; /* Pale Blue */
+            --player-dot: #add8e6; 
             --status-red: #ff5f57; --status-green: #28c840; 
         }
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
         body { 
             margin: 0; padding: 20px; font-family: 'Roboto', sans-serif; 
             background: var(--bg); color: var(--text); display: flex; 
@@ -30,7 +30,7 @@
             justify-content: flex-end; margin-bottom: 5px;
             mask-image: linear-gradient(to top, black 70%, transparent 100%);
         }
-        .msg { color: #aaa; font-size: 1.2rem; font-weight: 300; text-align: center; margin: 2px 0; animation: slideUp 0.3s ease-out; }
+        .msg { color: #bbb; font-size: 1.2rem; font-weight: 300; text-align: center; margin: 2px 0; animation: slideUp 0.3s ease-out; }
         @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
         #display { 
@@ -44,27 +44,24 @@
             display: grid; grid-template-columns: repeat(20, 1fr); gap: 6px; 
             width: 100%; max-width: 800px; user-select: none; z-index: 10;
         }
-        .key { grid-column: span 2; height: 50px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.8); border: 1px solid var(--border); border-radius: 6px; font-size: 1rem; cursor: pointer; }
+        .key { grid-column: span 2; height: 50px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.9); border: 1px solid var(--border); border-radius: 6px; font-size: 1rem; cursor: pointer; }
         .key.wide { grid-column: span 12; }
-        .key.gray { grid-column: span 3; background: #fafafa; color: #999; font-size: 0.75rem; letter-spacing: 1px; }
+        .key.gray { grid-column: span 3; background: #fafafa; color: #aaa; font-size: 0.75rem; letter-spacing: 1px; }
         .spacer { grid-column: span 1; }
 
-        #tally { margin-top: 40px; font-weight: 100; font-size: 1.2rem; color: #ddd; letter-spacing: 2px; }
+        #tally { margin-top: 40px; font-weight: 100; font-size: 1.2rem; color: #eee; letter-spacing: 2px; }
 
-        /* The main shared cursor */
         #ghost-cursor { 
-            position: fixed; left: 50%; top: 50%; width: 30px; height: 30px; 
-            background: var(--ghost); border: 1px solid #333; border-radius: 50%; 
+            position: fixed; left: 50%; top: 50%; width: 32px; height: 32px; 
+            background: var(--ghost); border: 1.5px solid #222; border-radius: 50%; 
             pointer-events: none; transform: translate(-50%, -50%); z-index: 9999; 
         }
 
-        /* Individual player dots */
         .player-dot {
-            position: fixed; width: 8px; height: 8px; 
+            position: fixed; width: 6px; height: 6px; 
             background: var(--player-dot); border-radius: 50%; 
             pointer-events: none; transform: translate(-50%, -50%);
-            z-index: 5000; transition: all 0.1s linear;
-            box-shadow: 0 0 5px rgba(173, 216, 230, 0.5);
+            z-index: 5000; transition: transform 0.1s linear;
         }
     </style>
 </head>
@@ -123,7 +120,7 @@
         const dotLocal = document.getElementById('dot-local');
 
         let allPlayers = {};
-        let playerDots = {}; // Store DOM elements for blue dots
+        let playerDots = {};
         let sharedText = "";
 
         db.ref(".info/connected").on("value", (snap) => {
@@ -136,13 +133,11 @@
             dotLocal.style.background = 'var(--status-green)';
         }
 
-        // Global listeners for movement
         window.addEventListener('mousemove', (e) => sendPos(e.clientX, e.clientY));
         window.addEventListener('touchmove', (e) => {
             if (e.touches[0]) sendPos(e.touches[0].clientX, e.touches[0].clientY);
         }, { passive: true });
 
-        // Sync shared components
         textRef.on('value', (snap) => { sharedText = snap.val() || ""; display.innerText = sharedText; });
         historyRef.limitToLast(10).on('value', (snap) => {
             historyEl.innerHTML = "";
@@ -154,10 +149,8 @@
             });
         });
 
-        // Sync all players
         playersRef.on('value', (snap) => { allPlayers = snap.val() || {}; });
 
-        // THE ENGINE
         function animate() {
             const now = Date.now();
             const activePlayers = Object.keys(allPlayers)
@@ -167,7 +160,6 @@
 
             tallyEl.innerText = activePlayers.length;
 
-            // 1. Update/Clean Player Dots (Blue dots)
             activePlayers.forEach(p => {
                 if (!playerDots[p.id]) {
                     const dot = document.createElement('div');
@@ -179,7 +171,6 @@
                 playerDots[p.id].style.top = (p.y * window.innerHeight) + 'px';
             });
 
-            // Clean up dots for players who left
             Object.keys(playerDots).forEach(id => {
                 if (!activePlayers.find(p => p.id === id)) {
                     playerDots[id].remove();
@@ -187,17 +178,25 @@
                 }
             });
 
-            // 2. Calculate Ghost weighted position
             const count = activePlayers.length;
             if (count > 0) {
-                const orbitTime = 5000; 
-                const focus = ((now % orbitTime) / orbitTime) * count;
+                const orbitTime = 6660; 
+                const t = (now % orbitTime) / orbitTime; // 0.0 to 1.0 linear
+                
+                // MATH: The "Dwell" function.
+                // We use a sine wave to slow down the focus near integers.
+                // focus = raw - k*sin(raw) makes the derivative small at integers.
+                const rawFocus = t * count;
+                const focus = rawFocus - (1.0 / (2 * Math.PI)) * Math.sin(2 * Math.PI * rawFocus);
+
                 let sumX = 0, sumY = 0, sumWeight = 0;
 
                 activePlayers.forEach((p, i) => {
                     let dist = Math.abs(i - focus);
                     if (dist > count / 2) dist = Math.abs(dist - count);
-                    const weight = Math.exp(-(dist * dist) / (2 * 0.4 * 0.4));
+                    
+                    // Gaussian Weight: Tightened sigma to 0.28 for more "hover" snap
+                    const weight = Math.exp(-(dist * dist) / (2 * 0.28 * 0.28));
                     sumX += p.x * weight;
                     sumY += p.y * weight;
                     sumWeight += weight;
@@ -208,8 +207,9 @@
                 const currentX = parseFloat(ghost.style.left) || targetX;
                 const currentY = parseFloat(ghost.style.top) || targetY;
                 
-                ghost.style.left = (currentX + (targetX - currentX) * 0.15) + 'px';
-                ghost.style.top = (currentY + (targetY - currentY) * 0.15) + 'px';
+                // Interpolation (0.1) for a slightly heavy, physical feel
+                ghost.style.left = (currentX + (targetX - currentX) * 0.1) + 'px';
+                ghost.style.top = (currentY + (targetY - currentY) * 0.1) + 'px';
             }
             requestAnimationFrame(animate);
         }
@@ -217,7 +217,7 @@
 
         function tryType(e) {
             const rect = ghost.getBoundingClientRect();
-            const el = document.elementFromPoint(rect.left + 15, rect.top + 15);
+            const el = document.elementFromPoint(rect.left + 16, rect.top + 16);
             
             if (el && el.classList.contains('key')) {
                 if(e) e.preventDefault();
