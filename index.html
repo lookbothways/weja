@@ -70,7 +70,10 @@
         #compass-handle .tip-line { stroke: #222; stroke-width: 1.5; fill: none; }
 
         #tally { margin-top: 20px; font-weight: 100; font-size: 1.2rem; color: #eee; letter-spacing: 2px; }
-        #instruction { font-weight: 300; font-size: 0.9rem; color: #ccc; text-align: center; letter-spacing: 1px; margin-top: 6px; }
+        #instruction { display: none; font-weight: 300; font-size: 0.9rem; color: #ccc; text-align: center; letter-spacing: 1px; margin-top: 6px; }
+        @media (pointer: coarse) {
+            #instruction { display: block; }
+        }
 
         #big-letter {
             font-family: 'Roboto', sans-serif; font-weight: 700;
