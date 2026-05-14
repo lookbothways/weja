@@ -70,6 +70,7 @@
         #compass-handle .tip-line { stroke: #222; stroke-width: 1.5; fill: none; }
 
         #tally { margin-top: 20px; font-weight: 100; font-size: 1.2rem; color: #eee; letter-spacing: 2px; }
+        #instruction { font-weight: 300; font-size: 0.9rem; color: #ccc; text-align: center; letter-spacing: 1px; margin-top: 6px; }
 
         #big-letter {
             font-family: 'Roboto', sans-serif; font-weight: 700;
@@ -77,9 +78,6 @@
             text-align: center; line-height: 1;
             min-height: 1.2em;
             pointer-events: none; user-select: none;
-        }
-        @media (pointer: coarse) {
-            #big-letter { font-size: 8rem; }
         }
     </style>
 </head>
@@ -102,6 +100,7 @@
     </div>
 
     <div id="tally">0</div>
+    <div id="instruction">Drag anywhere to select a letter, lift to type</div>
 
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
@@ -235,8 +234,11 @@
                 text.setAttribute('dominant-baseline', 'middle');
                 const rot = mid + 90;
                 text.setAttribute('transform', `rotate(${rot} ${pos.x} ${pos.y})`);
-                text.setAttribute('class', 'arc-letter' + ((label === 'DEL' || label === 'SEND' || label === 'SPACE') ? ' special' : ''));
-                text.textContent = label === 'SPACE' ? 'SPACE' : label;
+                const isSpecial = (label === 'SEND' || label === 'SPACE');
+                const isDel = (label === 'DEL');
+                text.setAttribute('class', 'arc-letter' + (isSpecial ? ' special' : ''));
+                if (isDel) text.setAttribute('font-weight', '700');
+                text.textContent = label === 'SPACE' ? '␣' : label === 'SEND' ? '👻' : label;
                 text.dataset.label = label;
                 text.dataset.idx = seg.idx;
                 // Store geometry for highlight shifting
@@ -249,43 +251,6 @@
 
         buildRow(ROW1, R_OUTER_OUT, R_OUTER_IN, 0);
         buildRow(ROW2, R_INNER_OUT, R_INNER_IN, 1);
-
-        // ===== Mobile instruction band =====
-        if (isMobile) {
-            const BAND_W = 80; // 3x wider
-            const rTopOut = R_OUTER_OUT + BAND_W + 2;
-            const rTopIn  = R_OUTER_OUT + 2;
-
-            const topBand = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-            topBand.setAttribute('d', arcPath(PIVOT.x, PIVOT.y, rTopOut, rTopIn, ANG_START, ANG_END));
-            topBand.setAttribute('fill', '#f0f0f0');
-            topBand.setAttribute('stroke', 'none');
-            svg.insertBefore(topBand, svg.firstChild);
-
-            const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
-            const rTopText = (rTopOut + rTopIn) / 2;
-            const tpA = polar(PIVOT.x, PIVOT.y, rTopText, ANG_START);
-            const tpB = polar(PIVOT.x, PIVOT.y, rTopText, ANG_END);
-            const topP = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-            topP.id = 'bandTopPath';
-            topP.setAttribute('d', `M ${tpA.x} ${tpA.y} A ${rTopText} ${rTopText} 0 0 1 ${tpB.x} ${tpB.y}`);
-            defs.appendChild(topP);
-            svg.appendChild(defs);
-
-            const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-            t.setAttribute('fill', '#bbb');
-            t.setAttribute('font-size', '18');
-            t.setAttribute('font-family', 'Roboto, sans-serif');
-            t.setAttribute('font-weight', '300');
-            t.setAttribute('letter-spacing', '2');
-            const tp = document.createElementNS('http://www.w3.org/2000/svg', 'textPath');
-            tp.setAttribute('href', '#bandTopPath');
-            tp.setAttribute('startOffset', '50%');
-            tp.setAttribute('text-anchor', 'middle');
-            tp.textContent = 'Drag and lift to transmit';
-            t.appendChild(tp);
-            svg.appendChild(t);
-        }
 
         // Compass handle
         const HANDLE_R = 22;
@@ -301,32 +266,8 @@
         const tipLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
         tipLine.setAttribute('x1', 0); tipLine.setAttribute('y1', 0);
         tipLine.setAttribute('class', 'tip-line');
-        const tipDot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-        tipDot.setAttribute('r', 3.5);
-        tipDot.setAttribute('fill', '#222');
         handle.appendChild(tipLine);
         handle.appendChild(bodyEl);
-        handle.appendChild(tipDot);
-
-        let dragKnob = null, dragKnobLabel = null;
-        const KNOB_R = 34;
-        if (isMobile) {
-            dragKnob = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-            dragKnob.setAttribute('r', KNOB_R);
-            dragKnob.setAttribute('fill', '#111');
-            dragKnob.setAttribute('stroke', '#000');
-            dragKnob.setAttribute('stroke-width', '1');
-            handle.appendChild(dragKnob);
-            dragKnobLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-            dragKnobLabel.setAttribute('fill', '#fff');
-            dragKnobLabel.setAttribute('font-size', '10');
-            dragKnobLabel.setAttribute('font-weight', '400');
-            dragKnobLabel.setAttribute('letter-spacing', '1.5');
-            dragKnobLabel.setAttribute('text-anchor', 'middle');
-            dragKnobLabel.setAttribute('dominant-baseline', 'middle');
-            dragKnobLabel.textContent = 'DRAG ME';
-            handle.appendChild(dragKnobLabel);
-        }
 
         svg.appendChild(handle);
 
@@ -401,6 +342,7 @@
                 if (displayedSeg && !displayedSeg.isGap) typeLabel(displayedSeg.label);
             }
             svg.addEventListener('touchstart', onTouchStart, { passive: false });
+            document.addEventListener('touchstart', onTouchStart, { passive: false });
             window.addEventListener('touchmove', onTouchMove, { passive: false });
             window.addEventListener('touchend', onTouchEnd);
         } else {
@@ -447,15 +389,6 @@
             tipLine.setAttribute('y1', handleCenter.y);
             tipLine.setAttribute('x2', tipEnd.x);
             tipLine.setAttribute('y2', tipEnd.y);
-            tipDot.setAttribute('cx', tipEnd.x);
-            tipDot.setAttribute('cy', tipEnd.y);
-            if (dragKnob) {
-                const mid = polar(PIVOT.x, PIVOT.y, HANDLE_ORBIT + tipLen * 0.5, angle);
-                dragKnob.setAttribute('cx', mid.x);
-                dragKnob.setAttribute('cy', mid.y);
-                dragKnobLabel.setAttribute('x', mid.x);
-                dragKnobLabel.setAttribute('y', mid.y);
-            }
         }
 
         // Shift amount: move highlighted letter outward by 50% of its height
@@ -482,7 +415,7 @@
             // Update the big letter indicator
             if (hit) {
                 const lbl = hit.label;
-                bigLetterEl.textContent = lbl === 'SPACE' ? '␣' : lbl;
+                bigLetterEl.textContent = lbl === 'SPACE' ? '␣' : lbl === 'SEND' ? '👻' : lbl;
             } else {
                 bigLetterEl.textContent = '';
             }
