@@ -70,6 +70,17 @@
         #compass-handle .tip-line { stroke: #222; stroke-width: 1.5; fill: none; }
 
         #tally { margin-top: 20px; font-weight: 100; font-size: 1.2rem; color: #eee; letter-spacing: 2px; }
+
+        #big-letter {
+            font-family: 'Roboto', sans-serif; font-weight: 700;
+            font-size: 6rem; color: var(--highlight);
+            text-align: center; line-height: 1;
+            min-height: 1.2em;
+            pointer-events: none; user-select: none;
+        }
+        @media (pointer: coarse) {
+            #big-letter { font-size: 8rem; }
+        }
     </style>
 </head>
 <body>
@@ -83,6 +94,8 @@
         <div id="history"></div>
         <div id="display"></div>
     </div>
+
+    <div id="big-letter"></div>
 
     <div id="compass-stage">
         <svg id="compass-svg" viewBox="0 0 820 480" xmlns="http://www.w3.org/2000/svg"></svg>
@@ -160,9 +173,9 @@
 
         const isMobile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
 
-        const ROW1 = ['A','B','C','D','E','F','G','H','I','J','K','L','DEL'];
+        const ROW1 = ['A','B','C','D','E','F','G','H','I','J','K','L','M'];
         const ROW2 = 'NOPQRSTUVWXYZ'.split('');
-        ROW2.push('SEND', 'SPACE');
+        ROW2.push('SEND', 'SPACE', 'DEL');
 
         const ANG_START = -160;
         const ANG_END   = -20;
@@ -223,7 +236,7 @@
                 const rot = mid + 90;
                 text.setAttribute('transform', `rotate(${rot} ${pos.x} ${pos.y})`);
                 text.setAttribute('class', 'arc-letter' + ((label === 'DEL' || label === 'SEND' || label === 'SPACE') ? ' special' : ''));
-                text.textContent = label === 'SPACE' ? '␣' : label;
+                text.textContent = label === 'SPACE' ? 'SPACE' : label;
                 text.dataset.label = label;
                 text.dataset.idx = seg.idx;
                 // Store geometry for highlight shifting
@@ -237,66 +250,41 @@
         buildRow(ROW1, R_OUTER_OUT, R_OUTER_IN, 0);
         buildRow(ROW2, R_INNER_OUT, R_INNER_IN, 1);
 
-        // ===== Mobile instruction bands =====
+        // ===== Mobile instruction band =====
         if (isMobile) {
-            const BAND_W = 28;
+            const BAND_W = 80; // 3x wider
             const rTopOut = R_OUTER_OUT + BAND_W + 2;
             const rTopIn  = R_OUTER_OUT + 2;
-            const rBotOut = R_INNER_IN - 2;
-            const rBotIn  = R_INNER_IN - BAND_W - 2;
 
-            // Top band
             const topBand = document.createElementNS('http://www.w3.org/2000/svg', 'path');
             topBand.setAttribute('d', arcPath(PIVOT.x, PIVOT.y, rTopOut, rTopIn, ANG_START, ANG_END));
             topBand.setAttribute('fill', '#f0f0f0');
             topBand.setAttribute('stroke', 'none');
             svg.insertBefore(topBand, svg.firstChild);
 
-            // Bottom band
-            const botBand = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-            botBand.setAttribute('d', arcPath(PIVOT.x, PIVOT.y, rBotOut, rBotIn, ANG_START, ANG_END));
-            botBand.setAttribute('fill', '#f0f0f0');
-            botBand.setAttribute('stroke', 'none');
-            svg.insertBefore(botBand, svg.firstChild);
-
-            // Curved text paths
             const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
             const rTopText = (rTopOut + rTopIn) / 2;
-            const rBotText = (rBotOut + rBotIn) / 2;
-
             const tpA = polar(PIVOT.x, PIVOT.y, rTopText, ANG_START);
             const tpB = polar(PIVOT.x, PIVOT.y, rTopText, ANG_END);
             const topP = document.createElementNS('http://www.w3.org/2000/svg', 'path');
             topP.id = 'bandTopPath';
             topP.setAttribute('d', `M ${tpA.x} ${tpA.y} A ${rTopText} ${rTopText} 0 0 1 ${tpB.x} ${tpB.y}`);
             defs.appendChild(topP);
-
-            const bpA = polar(PIVOT.x, PIVOT.y, rBotText, ANG_START);
-            const bpB = polar(PIVOT.x, PIVOT.y, rBotText, ANG_END);
-            const botP = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-            botP.id = 'bandBotPath';
-            botP.setAttribute('d', `M ${bpA.x} ${bpA.y} A ${rBotText} ${rBotText} 0 0 1 ${bpB.x} ${bpB.y}`);
-            defs.appendChild(botP);
-
             svg.appendChild(defs);
 
-            function makeBandLabel(pathId, txt) {
-                const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-                t.setAttribute('fill', '#ccc');
-                t.setAttribute('font-size', '10');
-                t.setAttribute('font-family', 'Roboto, sans-serif');
-                t.setAttribute('font-weight', '300');
-                t.setAttribute('letter-spacing', '2');
-                const tp = document.createElementNS('http://www.w3.org/2000/svg', 'textPath');
-                tp.setAttribute('href', '#' + pathId);
-                tp.setAttribute('startOffset', '50%');
-                tp.setAttribute('text-anchor', 'middle');
-                tp.textContent = txt;
-                t.appendChild(tp);
-                svg.appendChild(t);
-            }
-            makeBandLabel('bandTopPath', 'DRAG HERE');
-            makeBandLabel('bandBotPath', 'LIFT TO TRANSMIT');
+            const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            t.setAttribute('fill', '#bbb');
+            t.setAttribute('font-size', '18');
+            t.setAttribute('font-family', 'Roboto, sans-serif');
+            t.setAttribute('font-weight', '300');
+            t.setAttribute('letter-spacing', '2');
+            const tp = document.createElementNS('http://www.w3.org/2000/svg', 'textPath');
+            tp.setAttribute('href', '#bandTopPath');
+            tp.setAttribute('startOffset', '50%');
+            tp.setAttribute('text-anchor', 'middle');
+            tp.textContent = 'Drag and lift to transmit';
+            t.appendChild(tp);
+            svg.appendChild(t);
         }
 
         // Compass handle
@@ -473,6 +461,7 @@
         // Shift amount: move highlighted letter outward by 50% of its height
         // On mobile the font is bigger so shift more. Outward = toward rOut (away from pivot/finger).
         const HIGHLIGHT_SHIFT = isMobile ? 35 : 18;
+        const bigLetterEl = document.getElementById('big-letter');
 
         function renderHighlight(angle, row) {
             const hit = getHighlightedSegment(angle, row);
@@ -480,7 +469,6 @@
                 const isHit = hit && parseInt(t.dataset.idx) === hit.idx;
                 t.classList.toggle('highlighted', isHit);
 
-                // Reposition: shift outward when highlighted, restore when not
                 const midAng = parseFloat(t.dataset.midAngle);
                 const baseR = parseFloat(t.dataset.labelR);
                 const r = isHit ? baseR + HIGHLIGHT_SHIFT : baseR;
@@ -490,6 +478,15 @@
                 t.setAttribute('y', pos.y);
                 t.setAttribute('transform', `rotate(${rot} ${pos.x} ${pos.y})`);
             });
+
+            // Update the big letter indicator
+            if (hit) {
+                const lbl = hit.label;
+                bigLetterEl.textContent = lbl === 'SPACE' ? '␣' : lbl;
+            } else {
+                bigLetterEl.textContent = '';
+            }
+
             return hit;
         }
 
