@@ -113,6 +113,21 @@
         db.ref(".info/connected").on("value", (snap) => {
             dotNet.style.background = snap.val() ? 'var(--status-green)' : 'var(--status-red)';
         });
+
+        // Prune players inactive >1hr. Runs on load and every 5min.
+        function prune() {
+            const cutoff = Date.now() - 3600000;
+            playersRef.once('value', (snap) => {
+                snap.forEach(child => {
+                    const p = child.val();
+                    if (!p || !p.lastSeen || p.lastSeen < cutoff) {
+                        child.ref.remove();
+                    }
+                });
+            });
+        }
+        prune();
+        setInterval(prune, 300000);
         playerRef.onDisconnect().remove();
 
         textRef.on('value', (snap) => { sharedText = snap.val() || ""; display.innerText = sharedText; });
@@ -172,9 +187,9 @@
             return `M ${p0.x} ${p0.y} A ${rOut} ${rOut} 0 ${large} 1 ${p1.x} ${p1.y} L ${p2.x} ${p2.y} A ${rIn} ${rIn} 0 ${large} 0 ${p3.x} ${p3.y} Z`;
         }
 
-        // Build arcs. Each segment gets an angular range; letters placed at midangle.
-        // Segments are stored with their angular bounds for hit-testing.
-        const segments = []; // { label, row, a0, a1, mid }
+        // Build arcs. Each segment has angular bounds and (for typeable ones) a global index.
+        const segments = []; // { label, row, a0, a1, mid, isGap, idx? }
+        const typeable = []; // ordered list of typeable segments (for averaging)
 
         function buildRow(items, rOut, rIn, row) {
             const n = items.length;
@@ -185,30 +200,33 @@
                 const a1 = a0 + step;
                 const mid = (a0 + a1) / 2;
                 const isGap = label === '__GAP__';
-                segments.push({ label, row, a0, a1, mid, rOut, rIn, isGap });
+                const seg = { label, row, a0, a1, mid, rOut, rIn, isGap };
+                if (!isGap) {
+                    seg.idx = typeable.length;
+                    typeable.push(seg);
+                }
+                segments.push(seg);
 
-                if (isGap) return; // no visual for gaps
+                if (isGap) return;
 
-                // arc background
                 const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
                 path.setAttribute('d', arcPath(PIVOT.x, PIVOT.y, rOut, rIn, a0, a1));
                 path.setAttribute('class', 'arc-bg');
                 path.dataset.label = label;
                 svg.appendChild(path);
 
-                // label
                 const pos = polar(PIVOT.x, PIVOT.y, labelR, mid);
                 const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
                 text.setAttribute('x', pos.x);
                 text.setAttribute('y', pos.y);
                 text.setAttribute('text-anchor', 'middle');
                 text.setAttribute('dominant-baseline', 'middle');
-                // Rotate text so it follows the arc
                 const rot = mid + 90;
                 text.setAttribute('transform', `rotate(${rot} ${pos.x} ${pos.y})`);
                 text.setAttribute('class', 'arc-letter' + ((label === 'DEL' || label === 'SEND' || label === 'SPACE') ? ' special' : ''));
                 text.textContent = label === 'SPACE' ? '␣' : label;
                 text.dataset.label = label;
+                text.dataset.idx = seg.idx;
                 svg.appendChild(text);
             });
         }
@@ -328,11 +346,11 @@
             return { ang, row, dist };
         }
 
-        // ===== Broadcast position =====
+        // ===== Broadcast: just the typeable index this user is pointing at =====
+        let localIdx = Math.floor(typeable.length / 2);
         function broadcastLocal() {
             playerRef.set({
-                ang: localAngle,
-                row: localRow,
+                idx: localIdx,
                 lastSeen: Date.now(),
                 joinedAt: joinedAt
             });
@@ -343,9 +361,11 @@
         function updateFromPoint(clientX, clientY) {
             const p = clientToSvg(clientX, clientY);
             const { ang, row } = pointToAngleRow(p.x, p.y);
-            localAngle = ang;
-            localRow = row;
-            broadcastLocal();
+            const seg = getHighlightedSegment(ang, row);
+            if (seg) {
+                localIdx = seg.idx;
+                broadcastLocal();
+            }
         }
 
         if (isMobile) {
@@ -365,12 +385,9 @@
                 if (!isDragging) return;
                 isDragging = false;
                 handle.classList.remove('dragging');
-                const hit = getHighlightedSegment(localAngle, localRow);
-                if (hit && !hit.isGap) typeLabel(hit.label);
+                if (displayedSeg && !displayedSeg.isGap) typeLabel(displayedSeg.label);
             }
             svg.addEventListener('touchstart', onTouchStart, { passive: false });
-            // Also allow drag to start by touching anywhere (the knob is the intended target,
-            // but this matches desktop's "needle follows pointer everywhere" feel).
             window.addEventListener('touchmove', onTouchMove, { passive: false });
             window.addEventListener('touchend', onTouchEnd);
         } else {
@@ -380,8 +397,7 @@
             });
             window.addEventListener('mousedown', (e) => {
                 updateFromPoint(e.clientX, e.clientY);
-                const hit = getHighlightedSegment(localAngle, localRow);
-                if (hit && !hit.isGap) typeLabel(hit.label);
+                if (displayedSeg && !displayedSeg.isGap) typeLabel(displayedSeg.label);
             });
         }
 
@@ -401,18 +417,28 @@
             }
         }
 
-        // ===== Animation loop: oscillating weighted average =====
+        // ===== Animation =====
+        // Displayed fractional index — smoothly eases toward target. The needle's
+        // angle/row come from interpolating between adjacent typeable segments.
+        let displayedIdxF = localIdx;
+        let displayedSeg = typeable[localIdx];
+
+        function renderHighlightByIdx(idx) {
+            svg.querySelectorAll('.arc-letter').forEach(t => {
+                t.classList.toggle('highlighted', parseInt(t.dataset.idx) === idx);
+            });
+        }
+
         function animate() {
             const now = Date.now();
             const activePlayers = Object.keys(allPlayers)
                 .map(id => ({ id, ...allPlayers[id] }))
-                .filter(p => p && typeof p.ang === 'number' && now - p.lastSeen < 6000)
+                .filter(p => p && typeof p.idx === 'number' && now - p.lastSeen < 6000)
                 .sort((a, b) => a.joinedAt - b.joinedAt);
 
             tallyEl.innerText = activePlayers.length;
 
-            let displayAngle = localAngle;
-            let displayRow = localRow;
+            let targetIdxF = localIdx;
 
             if (activePlayers.length > 1) {
                 const count = activePlayers.length;
@@ -421,32 +447,69 @@
                 const rawFocus = t * count;
                 const focus = rawFocus - (1.0 / (2 * Math.PI)) * Math.sin(2 * Math.PI * rawFocus);
 
-                let sumA = 0, sumRow = 0, sumW = 0;
+                let sumI = 0, sumW = 0;
                 activePlayers.forEach((p, i) => {
                     let dist = Math.abs(i - focus);
                     if (dist > count / 2) dist = Math.abs(dist - count);
                     const w = Math.exp(-(dist * dist) / (2 * 0.28 * 0.28));
-                    sumA += p.ang * w;
-                    sumRow += p.row * w;
+                    sumI += p.idx * w;
                     sumW += w;
                 });
-                const targetA = sumA / sumW;
-                const targetR = sumRow / sumW;
-
-                displayAngle = displayAngle + (targetA - displayAngle) * 0.15;
-                // Row: ease toward weighted average, snap to nearest
-                displayRow = targetR >= 0.5 ? 1 : 0;
+                targetIdxF = sumI / sumW;
+            } else if (activePlayers.length === 1) {
+                targetIdxF = activePlayers[0].idx;
             }
 
-            setHandleVisual(displayAngle, displayRow);
-            renderHighlight(displayAngle, displayRow);
+            // Ease toward target — never snaps.
+            displayedIdxF += (targetIdxF - displayedIdxF) * 0.15;
+
+            // Visual: interpolate angle+row between adjacent typeable segments.
+            const lo = Math.max(0, Math.min(typeable.length - 1, Math.floor(displayedIdxF)));
+            const hi = Math.max(0, Math.min(typeable.length - 1, Math.ceil(displayedIdxF)));
+            const f = displayedIdxF - lo;
+            const segA = typeable[lo], segB = typeable[hi];
+            const ang = segA.mid + (segB.mid - segA.mid) * f;
+            // Row: if segments differ in row, smoothly interpolate radius via blended row value.
+            // For the handle visual we just pick whichever row is closer to the fractional target.
+            const rowF = segA.row + (segB.row - segA.row) * f;
+            const rowVisual = rowF; // 0..1 fractional
+            setHandleVisualSmooth(ang, rowVisual);
+
+            // Which segment is "currently highlighted" for typing = nearest typeable to displayedIdxF.
+            const nearest = Math.round(displayedIdxF);
+            const clampedNearest = Math.max(0, Math.min(typeable.length - 1, nearest));
+            displayedSeg = typeable[clampedNearest];
+            renderHighlightByIdx(clampedNearest);
 
             requestAnimationFrame(animate);
         }
 
+        function setHandleVisualSmooth(angle, rowF) {
+            // rowF: 0 = outer, 1 = inner. Interpolate tip length.
+            const tipLen = TIP_LEN_OUTER + (TIP_LEN_INNER - TIP_LEN_OUTER) * rowF;
+            const handleCenter = polar(PIVOT.x, PIVOT.y, HANDLE_ORBIT, angle);
+            const tipEnd = polar(PIVOT.x, PIVOT.y, HANDLE_ORBIT + tipLen, angle);
+            body.setAttribute('cx', handleCenter.x);
+            body.setAttribute('cy', handleCenter.y);
+            tipLine.setAttribute('x1', handleCenter.x);
+            tipLine.setAttribute('y1', handleCenter.y);
+            tipLine.setAttribute('x2', tipEnd.x);
+            tipLine.setAttribute('y2', tipEnd.y);
+            tipDot.setAttribute('cx', tipEnd.x);
+            tipDot.setAttribute('cy', tipEnd.y);
+            if (dragKnob) {
+                const mid = polar(PIVOT.x, PIVOT.y, HANDLE_ORBIT + tipLen * 0.5, angle);
+                dragKnob.setAttribute('cx', mid.x);
+                dragKnob.setAttribute('cy', mid.y);
+                dragKnobLabel.setAttribute('x', mid.x);
+                dragKnobLabel.setAttribute('y', mid.y);
+            }
+        }
+
         // initial render
-        setHandleVisual(localAngle, localRow);
-        renderHighlight(localAngle, localRow);
+        const initSeg = typeable[localIdx];
+        setHandleVisualSmooth(initSeg.mid, initSeg.row);
+        renderHighlightByIdx(localIdx);
         broadcastLocal();
         requestAnimationFrame(animate);
     </script>
