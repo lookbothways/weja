@@ -72,7 +72,7 @@
     </div>
 
     <div id="compass-stage">
-        <svg id="compass-svg" viewBox="0 0 600 500" xmlns="http://www.w3.org/2000/svg"></svg>
+        <svg id="compass-svg" viewBox="0 0 820 480" xmlns="http://www.w3.org/2000/svg"></svg>
     </div>
 
     <div id="tally">0</div>
@@ -129,8 +129,8 @@
 
         // ===== Compass geometry =====
         // SVG viewBox: 600x500. Pivot at bottom center.
-        const VB_W = 600, VB_H = 500;
-        const PIVOT = { x: 300, y: 440 };
+        const VB_W = 820, VB_H = 480;
+        const PIVOT = { x: 410, y: 440 };
 
         const isMobile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
 
@@ -369,6 +369,8 @@
                 if (hit && !hit.isGap) typeLabel(hit.label);
             }
             svg.addEventListener('touchstart', onTouchStart, { passive: false });
+            // Also allow drag to start by touching anywhere (the knob is the intended target,
+            // but this matches desktop's "needle follows pointer everywhere" feel).
             window.addEventListener('touchmove', onTouchMove, { passive: false });
             window.addEventListener('touchend', onTouchEnd);
         } else {
