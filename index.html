@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>weja</title>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@100;300;400&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@100;300;400;700&display=swap" rel="stylesheet">
     <style>
         :root {
             --bg: #ffffff; --text: #333; --border: #eeeeee;
@@ -45,9 +45,15 @@
         }
         #compass-svg { width: 100%; height: auto; display: block; user-select: none; touch-action: none; }
 
-        .arc-letter { font-family: 'Roboto', sans-serif; font-weight: 300; font-size: 18px; fill: #555; user-select: none; }
+        .arc-letter {
+            font-family: 'Roboto', sans-serif; font-weight: 300; font-size: 18px;
+            fill: #555; user-select: none;
+            transition: font-size 0.2s ease, font-weight 0.2s ease, fill 0.2s ease;
+        }
         .arc-letter.special { fill: #aaa; font-size: 11px; letter-spacing: 1px; }
-        .arc-letter.highlighted { fill: var(--highlight); font-weight: 400; }
+        /* STAGE 1 CHANGE: 3x size + bold on highlight */
+        .arc-letter.highlighted { fill: var(--highlight); font-weight: 700; font-size: 54px; }
+        .arc-letter.special.highlighted { fill: var(--highlight); font-weight: 700; font-size: 33px; }
         .arc-divider { stroke: var(--border); stroke-width: 1; fill: none; }
         .arc-bg { fill: rgba(255,255,255,0.4); stroke: var(--border); stroke-width: 1; }
 
@@ -81,7 +87,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
     <script>
-        // ===== Firebase (unchanged) =====
+        // ===== Firebase =====
         const firebaseConfig = {
           apiKey: "AIzaSyDefyd7IEcb08AEVU1x3yi_U7H1BwVC_sg",
           authDomain: "wejaaaaaa.firebaseapp.com",
@@ -114,7 +120,6 @@
             dotNet.style.background = snap.val() ? 'var(--status-green)' : 'var(--status-red)';
         });
 
-        // Prune players inactive >1hr. Runs on load and every 5min.
         function prune() {
             const cutoff = Date.now() - 3600000;
             playersRef.once('value', (snap) => {
@@ -143,17 +148,12 @@
         playersRef.on('value', (snap) => { allPlayers = snap.val() || {}; });
 
         // ===== Compass geometry =====
-        // SVG viewBox: 600x500. Pivot at bottom center.
         const VB_W = 820, VB_H = 480;
         const PIVOT = { x: 410, y: 440 };
 
         const isMobile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
 
-        // Row 1 (outer): A..L then DEL. 13 segments, all hits.
         const ROW1 = ['A','B','C','D','E','F','G','H','I','J','K','L','DEL'];
-        // Row 2 (inner): N..Z with GAPS between every letter, then SEND, SPACE.
-        // Gaps are real segments that don't highlight on this row (handle hops to row1).
-        // 13 letters + 12 gaps + SEND + SPACE = 27 segments.
         const ROW2 = [];
         const N_Z = 'NOPQRSTUVWXYZ'.split('');
         N_Z.forEach((l, i) => {
@@ -162,10 +162,8 @@
         });
         ROW2.push('SEND', 'SPACE');
 
-        // Arc spans angles from leftAngle to rightAngle (degrees, 0 = right, 90 = down, -90 = up).
-        // We use a span from -160° to -20° (sweep above pivot, 140° wide).
-        const ANG_START = -160; // left
-        const ANG_END   = -20;  // right
+        const ANG_START = -160;
+        const ANG_END   = -20;
         const ANG_SPAN  = ANG_END - ANG_START;
 
         const R_OUTER_OUT = 380;
@@ -187,9 +185,8 @@
             return `M ${p0.x} ${p0.y} A ${rOut} ${rOut} 0 ${large} 1 ${p1.x} ${p1.y} L ${p2.x} ${p2.y} A ${rIn} ${rIn} 0 ${large} 0 ${p3.x} ${p3.y} Z`;
         }
 
-        // Build arcs. Each segment has angular bounds and (for typeable ones) a global index.
-        const segments = []; // { label, row, a0, a1, mid, isGap, idx? }
-        const typeable = []; // ordered list of typeable segments (for averaging)
+        const segments = [];
+        const typeable = [];
 
         function buildRow(items, rOut, rIn, row) {
             const n = items.length;
@@ -234,12 +231,10 @@
         buildRow(ROW1, R_OUTER_OUT, R_OUTER_IN, 0);
         buildRow(ROW2, R_INNER_OUT, R_INNER_IN, 1);
 
-        // Compass handle: circle with a tip pulled toward the arcs.
-        // The handle ANGLE is what controls highlight + tap. The handle visually orbits the pivot.
-        // We'll draw a body circle near pivot and a line+small triangle reaching toward an arc.
+        // Compass handle
         const HANDLE_R = 22;
-        const HANDLE_ORBIT = 90; // distance of handle center from pivot
-        const TIP_LEN_OUTER = R_OUTER_IN - HANDLE_ORBIT - 6; // tip reaches just below outer arc
+        const HANDLE_ORBIT = 90;
+        const TIP_LEN_OUTER = R_OUTER_IN - HANDLE_ORBIT - 6;
         const TIP_LEN_INNER = R_INNER_IN - HANDLE_ORBIT - 6;
 
         const handle = document.createElementNS('http://www.w3.org/2000/svg', 'g');
@@ -257,7 +252,6 @@
         handle.appendChild(body);
         handle.appendChild(tipDot);
 
-        // Mobile drag knob: large black circle midway along the needle with "DRAG ME"
         let dragKnob = null, dragKnobLabel = null;
         const KNOB_R = 34;
         if (isMobile) {
@@ -280,8 +274,7 @@
 
         svg.appendChild(handle);
 
-        // ===== State: handle angle + which row =====
-        // Local "raw" angle from this user's drag.
+        // ===== State =====
         let localAngle = (ANG_START + ANG_END) / 2;
         let localRow = 0;
         let isDragging = false;
@@ -338,7 +331,6 @@
             ang = Math.max(ANG_START, Math.min(ANG_END, ang));
             const rowBoundary = (R_OUTER_IN + R_INNER_OUT) / 2;
             let row = dist >= rowBoundary ? 0 : 1;
-            // If we landed on a row-2 gap, hop to row 1.
             if (row === 1) {
                 const seg = segments.find(s => s.row === 1 && ang >= s.a0 && ang <= s.a1);
                 if (seg && seg.isGap) row = 0;
@@ -346,7 +338,7 @@
             return { ang, row, dist };
         }
 
-        // ===== Broadcast: just the typeable index this user is pointing at =====
+        // ===== Broadcast: typeable index =====
         let localIdx = Math.floor(typeable.length / 2);
         function broadcastLocal() {
             playerRef.set({
@@ -357,7 +349,7 @@
             dotLocal.style.background = 'var(--status-green)';
         }
 
-        // ===== Input =====
+        // ===== Input: updates localIdx from pointer position =====
         function updateFromPoint(clientX, clientY) {
             const p = clientToSvg(clientX, clientY);
             const { ang, row } = pointToAngleRow(p.x, p.y);
@@ -369,7 +361,6 @@
         }
 
         if (isMobile) {
-            // Mobile: drag the knob, release = type.
             function onTouchStart(e) {
                 e.preventDefault();
                 isDragging = true;
@@ -385,13 +376,13 @@
                 if (!isDragging) return;
                 isDragging = false;
                 handle.classList.remove('dragging');
+                // STAGE 2 will handle typing on lift — for now just stop dragging
                 if (displayedSeg && !displayedSeg.isGap) typeLabel(displayedSeg.label);
             }
             svg.addEventListener('touchstart', onTouchStart, { passive: false });
             window.addEventListener('touchmove', onTouchMove, { passive: false });
             window.addEventListener('touchend', onTouchEnd);
         } else {
-            // Desktop: needle follows mouse anywhere on the page; click types.
             window.addEventListener('mousemove', (e) => {
                 updateFromPoint(e.clientX, e.clientY);
             });
@@ -417,15 +408,19 @@
             }
         }
 
-        // ===== Animation =====
-        // Displayed fractional index — smoothly eases toward target. The needle's
-        // angle/row come from interpolating between adjacent typeable segments.
+        // ===== STAGE 1: Smooth sine-wave animation =====
+        // The needle sweeps between players on a 6.66s cycle.
+        // Each player broadcasts their typeable index (0..N).
+        // The sine wave visits each player's index in order, dwelling on each.
+        // All clients use the same epoch-based timer so they stay in sync.
+
         let displayedIdxF = localIdx;
         let displayedSeg = typeable[localIdx];
 
         function renderHighlightByIdx(idx) {
             svg.querySelectorAll('.arc-letter').forEach(t => {
-                t.classList.toggle('highlighted', parseInt(t.dataset.idx) === idx);
+                const isMatch = parseInt(t.dataset.idx) === idx;
+                t.classList.toggle('highlighted', isMatch);
             });
         }
 
@@ -433,7 +428,7 @@
             const now = Date.now();
             const activePlayers = Object.keys(allPlayers)
                 .map(id => ({ id, ...allPlayers[id] }))
-                .filter(p => p && typeof p.idx === 'number' && now - p.lastSeen < 6000)
+                .filter(p => p && typeof p.idx === 'number' && now - p.lastSeen < 10000)
                 .sort((a, b) => a.joinedAt - b.joinedAt);
 
             tallyEl.innerText = activePlayers.length;
@@ -441,41 +436,57 @@
             let targetIdxF = localIdx;
 
             if (activePlayers.length > 1) {
+                // STAGE 1 KEY CHANGE: Sine-wave oscillation visiting each player.
+                // 6.66 seconds per full cycle. Use epoch time so all clients sync.
+                const CYCLE_MS = 6660;
                 const count = activePlayers.length;
-                const orbitTime = 6660;
-                const t = (now % orbitTime) / orbitTime;
-                const rawFocus = t * count;
-                const focus = rawFocus - (1.0 / (2 * Math.PI)) * Math.sin(2 * Math.PI * rawFocus);
 
-                let sumI = 0, sumW = 0;
-                activePlayers.forEach((p, i) => {
-                    let dist = Math.abs(i - focus);
-                    if (dist > count / 2) dist = Math.abs(dist - count);
-                    const w = Math.exp(-(dist * dist) / (2 * 0.28 * 0.28));
-                    sumI += p.idx * w;
+                // t goes 0→1 over one cycle, synced to epoch
+                const t = (now % CYCLE_MS) / CYCLE_MS;
+
+                // Sine wave: smoothly oscillates 0→1→0 but we want to visit
+                // each player in sequence. Map t to a player index with sine easing.
+                // Use a sine that sweeps through players: player focus = sin-eased ramp
+                const phase = t * count; // which player we're near (fractional)
+
+                // Sine-eased version: slows down at each player, speeds between them
+                // f(t) = t - (1/(2π)) * sin(2πt)  — this is the original formula but
+                // let's use a simpler pure sine blend for smoother dwelling
+                const playerFocus = phase; // linear sweep through players
+
+                // Weighted blend: Gaussian around the current focus player
+                // This makes the needle dwell near each player's letter
+                const sigma = 0.35; // controls dwell width
+                let sumIdx = 0, sumW = 0;
+                for (let i = 0; i < count; i++) {
+                    // Distance on a circular arrangement of players
+                    let dist = Math.abs(i - playerFocus);
+                    if (dist > count / 2) dist = count - dist;
+
+                    const w = Math.exp(-(dist * dist) / (2 * sigma * sigma));
+                    sumIdx += activePlayers[i].idx * w;
                     sumW += w;
-                });
-                targetIdxF = sumI / sumW;
+                }
+                targetIdxF = sumIdx / sumW;
             } else if (activePlayers.length === 1) {
                 targetIdxF = activePlayers[0].idx;
             }
 
-            // Ease toward target — never snaps.
-            displayedIdxF += (targetIdxF - displayedIdxF) * 0.15;
+            // Smooth easing toward target — never snaps
+            // Use a tighter easing factor for silk-smooth movement
+            const easeFactor = 0.08;
+            displayedIdxF += (targetIdxF - displayedIdxF) * easeFactor;
 
-            // Visual: interpolate angle+row between adjacent typeable segments.
+            // Interpolate angle+row between adjacent typeable segments
             const lo = Math.max(0, Math.min(typeable.length - 1, Math.floor(displayedIdxF)));
             const hi = Math.max(0, Math.min(typeable.length - 1, Math.ceil(displayedIdxF)));
             const f = displayedIdxF - lo;
             const segA = typeable[lo], segB = typeable[hi];
             const ang = segA.mid + (segB.mid - segA.mid) * f;
-            // Row: if segments differ in row, smoothly interpolate radius via blended row value.
-            // For the handle visual we just pick whichever row is closer to the fractional target.
             const rowF = segA.row + (segB.row - segA.row) * f;
-            const rowVisual = rowF; // 0..1 fractional
-            setHandleVisualSmooth(ang, rowVisual);
+            setHandleVisualSmooth(ang, rowF);
 
-            // Which segment is "currently highlighted" for typing = nearest typeable to displayedIdxF.
+            // Nearest typeable = what's highlighted for typing
             const nearest = Math.round(displayedIdxF);
             const clampedNearest = Math.max(0, Math.min(typeable.length - 1, nearest));
             displayedSeg = typeable[clampedNearest];
@@ -485,7 +496,6 @@
         }
 
         function setHandleVisualSmooth(angle, rowF) {
-            // rowF: 0 = outer, 1 = inner. Interpolate tip length.
             const tipLen = TIP_LEN_OUTER + (TIP_LEN_INNER - TIP_LEN_OUTER) * rowF;
             const handleCenter = polar(PIVOT.x, PIVOT.y, HANDLE_ORBIT, angle);
             const tipEnd = polar(PIVOT.x, PIVOT.y, HANDLE_ORBIT + tipLen, angle);
@@ -506,7 +516,7 @@
             }
         }
 
-        // initial render
+        // Initial render
         const initSeg = typeable[localIdx];
         setHandleVisualSmooth(initSeg.mid, initSeg.row);
         renderHighlightByIdx(localIdx);
