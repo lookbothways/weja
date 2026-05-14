@@ -12,72 +12,99 @@
             --highlight: #ff3b30;
         }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
+        html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; }
         body {
-            margin: 0; padding: 20px; font-family: 'Roboto', sans-serif;
+            font-family: 'Roboto', sans-serif;
             background: var(--bg); color: var(--text); display: flex;
-            flex-direction: column; align-items: center;
-            min-height: 100vh; overflow: hidden; touch-action: none;
+            flex-direction: column; align-items: center; justify-content: center;
+            touch-action: none;
         }
 
-        #status-bar { position: fixed; top: 15px; left: 15px; display: flex; gap: 6px; z-index: 100; }
+        #status-bar { position: fixed; top: 8px; left: 8px; display: flex; gap: 6px; z-index: 100; }
         .dot { width: 8px; height: 8px; border-radius: 50%; background: #eee; }
 
-        #container { width: 100%; max-width: 600px; display: flex; flex-direction: column; align-items: center; margin-top: 20px; }
-
+        /* Landscape layout: top strip has history+display, rest is compass */
+        #top-strip {
+            width: 100%; display: flex; align-items: center; justify-content: center;
+            gap: 12px; padding: 4px 20px; flex-shrink: 0;
+        }
         #history {
-            width: 100%; height: 100px; display: flex; flex-direction: column;
-            justify-content: flex-end; margin-bottom: 5px;
+            flex: 1; max-width: 300px; height: 32px; display: flex; flex-direction: column;
+            justify-content: flex-end; overflow: hidden;
             mask-image: linear-gradient(to top, black 70%, transparent 100%);
         }
-        .msg { color: #bbb; font-size: 1.2rem; font-weight: 300; text-align: center; margin: 2px 0; animation: slideUp 0.3s ease-out; }
-        @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .msg { color: #bbb; font-size: 0.85rem; font-weight: 300; text-align: center; margin: 1px 0; animation: slideUp 0.2s ease-out; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 
         #display {
-            width: 100%; min-height: 60px; padding: 10px; font-size: 1.8rem; font-weight: 300;
-            border: 1px solid #ddd; border-radius: 15px; text-align: center; letter-spacing: 1px;
-            display: flex; align-items: center; justify-content: center; background: white; margin-bottom: 20px;
+            min-width: 180px; max-width: 320px; height: 32px; padding: 2px 12px;
+            font-size: 1.1rem; font-weight: 300;
+            border: 1px solid #ddd; border-radius: 10px; text-align: center; letter-spacing: 1px;
+            display: flex; align-items: center; justify-content: center; background: white;
         }
 
         #compass-stage {
-            width: 100%; max-width: 600px; flex: 1;
+            flex: 1; width: 100%;
             display: flex; align-items: center; justify-content: center;
             position: relative;
         }
-        #compass-svg { width: 100%; height: auto; display: block; user-select: none; touch-action: none; }
+        #compass-svg { width: 100%; height: 100%; display: block; user-select: none; touch-action: none; }
 
         .arc-letter {
-            font-family: 'Roboto', sans-serif; font-weight: 300; font-size: 18px;
+            font-family: 'Roboto', sans-serif; font-weight: 300; font-size: 24px;
             fill: #555; user-select: none;
             transition: font-size 0.15s ease, font-weight 0.15s ease, fill 0.15s ease;
         }
-        .arc-letter.special { fill: #aaa; font-size: 11px; letter-spacing: 1px; }
-        .arc-letter.highlighted { fill: var(--highlight); font-weight: 700; font-size: 54px; }
-        .arc-letter.special.highlighted { fill: var(--highlight); font-weight: 700; font-size: 33px; }
+        .arc-letter.special { fill: #aaa; font-size: 15px; letter-spacing: 1px; }
+        .arc-letter.highlighted { fill: var(--highlight); font-weight: 700; font-size: 64px; }
+        .arc-letter.special.highlighted { fill: var(--highlight); font-weight: 700; font-size: 42px; }
         .arc-divider { stroke: var(--border); stroke-width: 1; fill: none; }
         .arc-bg { fill: rgba(255,255,255,0.4); stroke: var(--border); stroke-width: 1; }
+        .band-bg { fill: #f4f4f4; stroke: none; }
+        .band-text { font-family: 'Roboto', sans-serif; font-weight: 300; font-size: 11px; fill: #bbb; letter-spacing: 2px; }
 
         #compass-handle { cursor: grab; }
         #compass-handle.dragging { cursor: grabbing; }
         #compass-handle .body { fill: rgba(255,255,255,0.95); stroke: #222; stroke-width: 1.5; }
         #compass-handle .tip-line { stroke: #222; stroke-width: 1.5; fill: none; }
 
-        #tally { margin-top: 20px; font-weight: 100; font-size: 1.2rem; color: #eee; letter-spacing: 2px; }
+        #tally { position: fixed; bottom: 6px; right: 12px; font-weight: 100; font-size: 0.9rem; color: #ddd; letter-spacing: 2px; }
+
+        /* Rotate prompt for portrait mobile */
+        #rotate-prompt {
+            display: none; position: fixed; inset: 0; z-index: 9999;
+            background: #fff; color: #333;
+            flex-direction: column; align-items: center; justify-content: center;
+            font-family: 'Roboto', sans-serif; text-align: center; padding: 40px;
+        }
+        #rotate-prompt .icon { font-size: 3rem; margin-bottom: 16px; }
+        #rotate-prompt .txt { font-size: 1.1rem; font-weight: 300; color: #888; }
+
+        @media (orientation: portrait) and (max-width: 900px) {
+            #rotate-prompt { display: flex !important; }
+            #top-strip, #compass-stage, #tally, #status-bar { display: none !important; }
+        }
     </style>
 </head>
 <body>
+
+    <div id="rotate-prompt">
+        <div class="icon">📱↔️</div>
+        <div class="txt">Rotate your phone to landscape</div>
+    </div>
 
     <div id="status-bar">
         <div id="dot-net" class="dot"></div>
         <div id="dot-local" class="dot"></div>
     </div>
 
-    <div id="container">
+    <div id="top-strip">
         <div id="history"></div>
         <div id="display"></div>
     </div>
 
     <div id="compass-stage">
-        <svg id="compass-svg" viewBox="0 0 820 480" xmlns="http://www.w3.org/2000/svg"></svg>
+        <svg id="compass-svg" viewBox="0 0 960 420" preserveAspectRatio="xMidYMax meet" xmlns="http://www.w3.org/2000/svg"></svg>
     </div>
 
     <div id="tally">0</div>
@@ -86,6 +113,11 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
     <script>
+        // ===== Orientation lock attempt =====
+        if (screen.orientation && screen.orientation.lock) {
+            screen.orientation.lock('landscape').catch(() => {});
+        }
+
         // ===== Firebase =====
         const firebaseConfig = {
           apiKey: "AIzaSyDefyd7IEcb08AEVU1x3yi_U7H1BwVC_sg",
@@ -147,28 +179,32 @@
         playersRef.on('value', (snap) => { allPlayers = snap.val() || {}; });
 
         // ===== Compass geometry =====
-        const VB_W = 820, VB_H = 480;
-        const PIVOT = { x: 410, y: 440 };
+        // Wider viewBox for 16:9 landscape
+        const VB_W = 960, VB_H = 420;
+        const PIVOT = { x: 480, y: 400 };
 
         const isMobile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
 
         const ROW1 = ['A','B','C','D','E','F','G','H','I','J','K','L','DEL'];
-        const ROW2 = [];
-        const N_Z = 'NOPQRSTUVWXYZ'.split('');
-        N_Z.forEach((l, i) => {
-            ROW2.push(l);
-            if (i < N_Z.length - 1) ROW2.push('__GAP__');
-        });
+        // NO GAPS — inner row is packed tight just like outer
+        const ROW2 = 'NOPQRSTUVWXYZ'.split('');
         ROW2.push('SEND', 'SPACE');
 
         const ANG_START = -160;
         const ANG_END   = -20;
         const ANG_SPAN  = ANG_END - ANG_START;
 
+        // Bigger radii for landscape
         const R_OUTER_OUT = 380;
-        const R_OUTER_IN  = 320;
-        const R_INNER_OUT = 310;
-        const R_INNER_IN  = 250;
+        const R_OUTER_IN  = 310;
+        const R_INNER_OUT = 300;
+        const R_INNER_IN  = 230;
+
+        // Instruction band radii (mobile only, drawn for all)
+        const R_BAND_OUTER_OUT = R_OUTER_OUT + 30;
+        const R_BAND_OUTER_IN  = R_OUTER_OUT + 2;
+        const R_BAND_INNER_OUT = R_INNER_IN - 2;
+        const R_BAND_INNER_IN  = R_INNER_IN - 30;
 
         function deg2rad(d) { return d * Math.PI / 180; }
         function polar(cx, cy, r, deg) {
@@ -184,6 +220,67 @@
             return `M ${p0.x} ${p0.y} A ${rOut} ${rOut} 0 ${large} 1 ${p1.x} ${p1.y} L ${p2.x} ${p2.y} A ${rIn} ${rIn} 0 ${large} 0 ${p3.x} ${p3.y} Z`;
         }
 
+        // ===== Draw instruction bands (mobile-only visual, harmless on desktop) =====
+        if (isMobile) {
+            // Top band: "DRAG HERE"
+            const topBand = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            topBand.setAttribute('d', arcPath(PIVOT.x, PIVOT.y, R_BAND_OUTER_OUT, R_BAND_OUTER_IN, ANG_START, ANG_END));
+            topBand.setAttribute('class', 'band-bg');
+            svg.appendChild(topBand);
+
+            // Curved text path for "DRAG HERE"
+            const topTextR = (R_BAND_OUTER_OUT + R_BAND_OUTER_IN) / 2;
+            const topTextPathId = 'topTextPath';
+            const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+            const topPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            // Arc from left to right at the band's mid-radius
+            const tp0 = polar(PIVOT.x, PIVOT.y, topTextR, ANG_START);
+            const tp1 = polar(PIVOT.x, PIVOT.y, topTextR, ANG_END);
+            topPath.setAttribute('d', `M ${tp0.x} ${tp0.y} A ${topTextR} ${topTextR} 0 0 1 ${tp1.x} ${tp1.y}`);
+            topPath.id = topTextPathId;
+            defs.appendChild(topPath);
+
+            // Bottom band: "LIFT TO TRANSMIT"
+            const botBand = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            botBand.setAttribute('d', arcPath(PIVOT.x, PIVOT.y, R_BAND_INNER_OUT, R_BAND_INNER_IN, ANG_START, ANG_END));
+            botBand.setAttribute('class', 'band-bg');
+            svg.appendChild(botBand);
+
+            const botTextR = (R_BAND_INNER_OUT + R_BAND_INNER_IN) / 2;
+            const botTextPathId = 'botTextPath';
+            const botPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            const bp0 = polar(PIVOT.x, PIVOT.y, botTextR, ANG_START);
+            const bp1 = polar(PIVOT.x, PIVOT.y, botTextR, ANG_END);
+            botPath.setAttribute('d', `M ${bp0.x} ${bp0.y} A ${botTextR} ${botTextR} 0 0 1 ${bp1.x} ${bp1.y}`);
+            botPath.id = botTextPathId;
+            defs.appendChild(botPath);
+
+            svg.appendChild(defs);
+
+            // Top text
+            const topText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            topText.setAttribute('class', 'band-text');
+            const topTP = document.createElementNS('http://www.w3.org/2000/svg', 'textPath');
+            topTP.setAttribute('href', '#' + topTextPathId);
+            topTP.setAttribute('startOffset', '50%');
+            topTP.setAttribute('text-anchor', 'middle');
+            topTP.textContent = 'DRAG HERE';
+            topText.appendChild(topTP);
+            svg.appendChild(topText);
+
+            // Bottom text
+            const botText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            botText.setAttribute('class', 'band-text');
+            const botTP = document.createElementNS('http://www.w3.org/2000/svg', 'textPath');
+            botTP.setAttribute('href', '#' + botTextPathId);
+            botTP.setAttribute('startOffset', '50%');
+            botTP.setAttribute('text-anchor', 'middle');
+            botTP.textContent = 'LIFT TO TRANSMIT';
+            botText.appendChild(botTP);
+            svg.appendChild(botText);
+        }
+
+        // ===== Build letter arcs =====
         const segments = [];
         const typeable = [];
 
@@ -273,7 +370,7 @@
 
         svg.appendChild(handle);
 
-        // ===== State: angle + row (NOT index) =====
+        // ===== State: angle + row =====
         let localAngle = (ANG_START + ANG_END) / 2;
         let localRow = 0;
         let isDragging = false;
@@ -300,10 +397,6 @@
             ang = Math.max(ANG_START, Math.min(ANG_END, ang));
             const rowBoundary = (R_OUTER_IN + R_INNER_OUT) / 2;
             let row = dist >= rowBoundary ? 0 : 1;
-            if (row === 1) {
-                const seg = segments.find(s => s.row === 1 && ang >= s.a0 && ang <= s.a1);
-                if (seg && seg.isGap) row = 0;
-            }
             return { ang, row, dist };
         }
 
@@ -377,10 +470,6 @@
         }
 
         // ===== SMOOTH ANIMATION =====
-        // Needle angle & row ease toward target. With multiple players,
-        // a 6.66s sine-wave cycles focus between them.
-        // KEY: we blend ANGLES, not indices. No row-hopping.
-
         let displayAngle = localAngle;
         let displayRow = localRow;
 
@@ -448,12 +537,10 @@
                 targetRow = activePlayers[0].row;
             }
 
-            // Smooth easing
             const ease = 0.08;
             displayAngle += (targetAngle - displayAngle) * ease;
             displayRow += (targetRow - displayRow) * ease;
 
-            // Render
             setHandleVisual(displayAngle, displayRow);
             const snapRow = displayRow < 0.5 ? 0 : 1;
             displayedSeg = renderHighlight(displayAngle, snapRow);
