@@ -20,6 +20,8 @@
         }
 
         #status-bar { position: fixed; top: 15px; left: 15px; display: flex; gap: 6px; z-index: 100; }
+        #ghost-bar { position: fixed; top: 13px; right: 15px; display: flex; gap: 4px; z-index: 100; }
+        #ghost-bar .ghost { font-size: 8px; line-height: 1; }
         .dot { width: 8px; height: 8px; border-radius: 50%; background: #eee; }
 
         #container { width: 100%; max-width: 600px; display: flex; flex-direction: column; align-items: center; margin-top: 20px; }
@@ -90,6 +92,7 @@
         <div id="dot-net" class="dot"></div>
         <div id="dot-local" class="dot"></div>
     </div>
+    <div id="ghost-bar"></div>
 
     <div id="container">
         <div id="history"></div>
@@ -434,6 +437,19 @@
                 .sort((a, b) => a.joinedAt - b.joinedAt);
 
             tallyEl.innerText = activePlayers.length;
+
+            // Update ghost bar: one ghost per active player
+            const ghostBar = document.getElementById('ghost-bar');
+            const ghostCount = ghostBar.children.length;
+            if (ghostCount !== activePlayers.length) {
+                ghostBar.innerHTML = '';
+                for (let i = 0; i < activePlayers.length; i++) {
+                    const g = document.createElement('span');
+                    g.className = 'ghost';
+                    g.textContent = '👻';
+                    ghostBar.appendChild(g);
+                }
+            }
 
             let targetAngle = localAngle;
             let targetRow = localRow;
