@@ -21,7 +21,7 @@
 
         #status-bar { position: fixed; top: 15px; left: 15px; display: flex; gap: 6px; z-index: 100; }
         #ghost-bar { position: fixed; top: 13px; right: 15px; display: flex; gap: 4px; z-index: 100; }
-        #ghost-bar .ghost { font-size: 8px; line-height: 1; }
+        #ghost-bar .ghost { font-size: 8px; line-height: 1; opacity: 0.5; transform: scale(1); transition: opacity 0.3s ease, transform 0.3s ease; display: inline-block; }
         .dot { width: 8px; height: 8px; border-radius: 50%; background: #eee; }
 
         #container { width: 100%; max-width: 600px; display: flex; flex-direction: column; align-items: center; margin-top: 20px; }
@@ -384,6 +384,8 @@
 
         let displayAngle = localAngle;
         let displayRow = localRow;
+        const ghostLastAng = {};
+        const ghostActivity = {};
 
         function setHandleVisual(angle, rowF) {
             const tipLen = TIP_LEN_OUTER + (TIP_LEN_INNER - TIP_LEN_OUTER) * rowF;
@@ -438,10 +440,9 @@
 
             tallyEl.innerText = activePlayers.length;
 
-            // Update ghost bar: one ghost per active player
+            // Update ghost bar: one ghost per active player, scale on movement
             const ghostBar = document.getElementById('ghost-bar');
-            const ghostCount = ghostBar.children.length;
-            if (ghostCount !== activePlayers.length) {
+            if (ghostBar.children.length !== activePlayers.length) {
                 ghostBar.innerHTML = '';
                 for (let i = 0; i < activePlayers.length; i++) {
                     const g = document.createElement('span');
@@ -450,6 +451,18 @@
                     ghostBar.appendChild(g);
                 }
             }
+            activePlayers.forEach((p, i) => {
+                const g = ghostBar.children[i];
+                if (!g) return;
+                const prevAng = ghostLastAng[p.id];
+                const delta = prevAng !== undefined ? Math.abs(p.ang - prevAng) : 0;
+                ghostLastAng[p.id] = p.ang;
+                if (delta > 0.3) ghostActivity[p.id] = now;
+                const age = now - (ghostActivity[p.id] || 0);
+                const active = Math.max(0, 1 - age / 1500);
+                g.style.opacity = 0.5 + 0.5 * active;
+                g.style.transform = `scale(${1 + 0.6 * active})`;
+            });
 
             let targetAngle = localAngle;
             let targetRow = localRow;
